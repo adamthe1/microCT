@@ -226,6 +226,7 @@
 /del seg_hi2
 /del seg_hi_cl
 
+/write seg_hi "ipl_fname14
 
 !----- Masking of entire bone (will be used for Ca.Th) -----
 ! scale down by "ipl_misc1_3 to save computing time on erosion dilation 
