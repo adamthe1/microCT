@@ -84,14 +84,19 @@
 ! extract voi from isq
 !
 
-/isq_to_aim
-  -aim_name                  org
-  -isq_filename              "ipl_isq
-  -pos                       0 0 0 
-  -dim                       -1 -1 -1
+
+/if "ipl_misc1_5 eq 1
+  /isq_to_aim
+    -aim_name                  org
+    -isq_filename              "ipl_isq
+    -pos                       0 0 0 
+    -dim                       -1 -1 -1
  ! -pos                       "ipl_voix "ipl_voiy "ipl_voiz
  ! -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
-!/read org "ipl_aim
+
+/else
+  /read org "ipl_aim
+/endif
 
 ! if bone is not clean then you use approximate contour of the bone so it is clean
 ! if doesn't have contour doesn't do anything
@@ -176,7 +181,7 @@
 ! uses ipl_gobj0 temporarily
 /copy seg_lo box
 /set box 127 127
-/togobj box  "ipl_fname14
+/togobj_from_aim box  "ipl_fname14
   -curvature_smooth           5
 /del box 
 /gobj org "ipl_gobj5
@@ -272,9 +277,7 @@
 
 /del ero_rescale
 
-/togobj_from_aim
-  -input                     mask
-  -output                    "ipl_fname13
+/togobj_from_aim mask "ipl_fname13
   -curvature_smooth          5
 
 /write mask "ipl_fname1
