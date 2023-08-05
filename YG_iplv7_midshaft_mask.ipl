@@ -84,14 +84,14 @@
 ! extract voi from isq
 !
 
-!/isq_to_aim
-!  -aim_name                  org
-!  -isq_filename              "ipl_isq
-!  -pos                       0 0 0 
-!  -dim                       -1 -1 -1
+/isq_to_aim
+  -aim_name                  org
+  -isq_filename              "ipl_isq
+  -pos                       0 0 0 
+  -dim                       -1 -1 -1
  ! -pos                       "ipl_voix "ipl_voiy "ipl_voiz
  ! -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
-/read org "ipl_aim
+!/read org "ipl_aim
 
 ! if bone is not clean then you use approximate contour of the bone so it is clean
 ! if doesn't have contour doesn't do anything
