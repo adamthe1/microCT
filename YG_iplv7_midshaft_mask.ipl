@@ -176,7 +176,7 @@
 ! uses ipl_gobj0 temporarily
 /copy seg_lo box
 /set box 127 127
-/togobj box  "ipl_gobj5
+/togobj box  "ipl_fname14
   -curvature_smooth           5
 /del box 
 /gobj org "ipl_gobj5
@@ -272,13 +272,9 @@
 
 /del ero_rescale
 
-
-! hello
-
-
 /togobj_from_aim
   -input                     mask
-  -output                    "ipl_gobj0
+  -output                    "ipl_fname13
   -curvature_smooth          5
 
 /write mask "ipl_fname1
@@ -699,39 +695,39 @@
   -val022                    "mean_full_vox_mu_mean
   -val023                    "mean_full_vox_mu_sd
   -val024                    "mean_full_vox_mu_flag
-  -val025                    "ttar
-  -val026                    "ctar
-  -val027                    "ct_area_frac
-  -val028                    "maar
-  -val029                    "ring_moi_cmx
-  -val030                    "ring_moi_cmy
-  -val031                    "ring_moi_ixx
-  -val032                    "ring_moi_iyy
-  -val033                    "ring_moi_ixy
-  -val034                    "ring_moi_pmoi
-  -val035                    "ring_moi_ixx_cy
-  -val036                    "ring_moi_iyy_cx
-  -val037                    "ring_moi_imax
-  -val038                    "ring_moi_imin
-  -val039                    "ring_moi_angle
-  -val040                    "ring_moi_imax_cmax
-  -val041                    "ring_moi_imin_cmin
-  -val042                    "cort_th_mean
-  -val043                    "cort_th_sd
+  -val025                    "ttar !
+  -val026                    "ctar !
+  -val027                    "ct_area_frac !
+  -val028                    "maar !
+  -val029                    "ring_moi_cmx !
+  -val030                    "ring_moi_cmy !
+  -val031                    "ring_moi_ixx !
+  -val032                    "ring_moi_iyy !
+  -val033                    "ring_moi_ixy !
+  -val034                    "ring_moi_pmoi !
+  -val035                    "ring_moi_ixx_cy !
+  -val036                    "ring_moi_iyy_cx  !
+  -val037                    "ring_moi_imax !
+  -val038                    "ring_moi_imin !
+  -val039                    "ring_moi_angle !
+  -val040                    "ring_moi_imax_cmax !
+  -val041                    "ring_moi_imin_cmin !
+  -val042                    "cort_th_mean !
+  -val043                    "cort_th_sd !
   -val044                    "cort_th_flag
-  -val045                    "outer_gobj_circum_mean
-  -val046                    "inner_gobj_circum_mean
-  -val047                    "po_cl_components
-  -val048                    "po_vox_obj_volume
-  -val049                    "po_cl_vol_sd
-  -val050                    "avgpov
-  -val051                    "po_dens
-  -val052                    "po_th_mean
-  -val053                    "po_th_sd
-  -val054                    "po_th_flag
-  -val055                    "ctpo
-  -val056                    "cort_angle_deg
-  -val057                    "cort_angle_deg_flag
+  -val045                    "outer_gobj_circum_mean !
+  -val046                    "inner_gobj_circum_mean !
+  -val047                    "po_cl_components   !
+  -val048                    "po_vox_obj_volume   !
+  -val049                    "po_cl_vol_sd       !
+  -val050                    "avgpov             !
+  -val051                    "po_dens           !
+  -val052                    "po_th_mean      
+  -val053                    "po_th_sd   
+  -val054                    "po_th_flag 
+  -val055                    "ctpo             !
+  -val056                    "cort_angle_deg   ! 
+  -val057                    "cort_angle_deg_flag 
 
 
 ..
