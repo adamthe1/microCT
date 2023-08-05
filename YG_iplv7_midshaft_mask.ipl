@@ -1,0 +1,733 @@
+!
+!         _/_/_/  _/_/_/    _/
+!          _/    _/    _/  _/           Image Processing Language
+!         _/    _/_/_/    _/
+!        _/    _/        _/             (c) SCANCO Medical AG
+!     _/_/_/  _/        _/_/_/_/
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Midshaft analysis     !
+!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! created: 
+
+! note: This script is adapted from BO-003 Cortical Bone Analysis.
+!       It can be used for cortical bone of the midshaft portion
+!       where no trabecular bone is present.
+!       This script does not need any contours.
+
+! modifications:
+!
+! 18-JAN-2022     BV/TV in % (times 100).
+!                 Po.Dn and Ct.Po bug fix. Norm by Ct.V. sw
+! 13-JUN-2022     Component labeling after segmentation in order to remove
+!                 small particles/fragments in the bone marrow
+
+
+!  Cortical bone analysis according to
+!  Bouxsein, Mary L et al. Guidelines for assessment of bone microstructure
+!  in rodents using micro-computed tomography.
+!  Journal of bone and mineral research : the official journal of the
+!  American Society for Bone and Mineral Research vol. 25,7 (2010):
+!  1468-86. doi:10.1002/jbmr.141
+
+
+! ipl_segaim: Midshaft ring aim
+! ipl_fname0: Full bone (seg_lo aim file)
+! ipl_fname1: Aim of mask we created with seg_hi
+! ipl_fname2: Moi on ring file
+! ipl_fname3: dt_object output (aim)
+! ipl_fname4: histofile for cort of ring filled
+! ipl_fname5: perio circumf text file
+! ipl_fname6: endo circumf text file
+! ipl_fname7: rings_pores aim file
+! ipl_fname8: cl_image output on pores 
+! ipl_fname9: dt_object on pores output file
+! ipl_fname10: dt_object on pores histofile
+! ipl_fname11: transparent concat aim file
+!
+! ipl_gobj0: Gobj of mask we created with seg_hi
+! ipl_gobj1: gobj we create of ring_filled
+! ipl_gobj2: Input: approximate contour of ring to clean outside particles
+! ipl_gobj3: Gobj of perio_ring (smoothed 1)
+! ipl_gobj4: Gobj of endo_ring (smoothed 1)
+! ipl_gobj5: Extra gobj for cutting box (line 177)
+!
+!ipl_peel0: Input: peel off org when calculating mean
+!ipl_peel1: Input: peel off ring for vox calculation
+!
+! Input:
+! ipl_misc1_0: (0-100)) (%) (default 50) -> where ring starts in relation to the bone
+! ipl_misc1_1: ring height (mm) (default 1)
+! ipl_misc1_2: dilation_value after descaling the resolution
+! ipl_misc1_3: scaling value (bothways) (1,2,3..)
+!
+! parameters for lower threshold (seg_lo):  ipl_lower0, ipl_upper0, ipl_unit0
+! parameters for upper threshold (seg_hi):  ipl_lower1, ipl_upper1, ipl_unit1
+!
+
+
+/db_scanco_activate
+  -write                     true
+  -type                      2
+
+/db_e3_clear_eval
+  -type                      e44
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+
+!
+! extract voi from isq
+!
+
+!/isq_to_aim
+!  -aim_name                  org
+!  -isq_filename              "ipl_isq
+!  -pos                       0 0 0 
+!  -dim                       -1 -1 -1
+ ! -pos                       "ipl_voix "ipl_voiy "ipl_voiz
+ ! -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+/read org "ipl_aim
+
+! if bone is not clean then you use approximate contour of the bone so it is clean
+! if doesn't have contour doesn't do anything
+!/gobj org "ipl_gobj2
+
+!
+! segmentation
+!
+
+/sup org
+  -supdim_numbers            4 4 1
+  -testoff_pixels            "ipl_support0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+  
+/gauss_lp                                                    
+  -input                     org
+  -output                    gau
+  -sigma                     "ipl_sigma0
+  -support                   "ipl_support0
+
+/threshold  gau  seg_hi
+  -low         "ipl_lower0  
+  -upp         "ipl_upper0
+  -value       127
+  -unit        "ipl_unit0 
+
+! it is full with dist so when you make the mask
+/threshold  gau  seg_lo_bef
+  -low         "ipl_lower1  
+  -upp         "ipl_upper1
+  -value       127
+  -unit        "ipl_unit1 
+
+/del gau
+
+! run component labeling to save top 2 biggest parts (Main bone, Femur) 
+! maybe remove
+
+! DO BEFORE RUNNING SCRIPT
+! change 2 to 1 if you want cl on seg_lo, else no cl
+
+/if 1 eq 2
+
+/bounding_box_cut seg_lo seg_lo2
+  -z_only  false
+  -border  0  
+
+/del seg_lo
+
+/cl_nr_extract
+  -input                     seg_lo2
+  -output                    seg_lo_cl
+  -min_number                20000
+  -max_number                0 
+
+/cl_ow_rank_extract
+  -input_output              seg_lo_cl
+  -first_rank                1
+  -last_rank                 2
+  -connect_boundary          false
+  -value_in_range            127
+  -topology                  6
+
+/bounding_box_cut seg_lo_cl seg_lo
+  -z_only                    false
+  -border                    1 1 1  
+
+/del seg_lo2
+/del seg_lo_cl
+
+/else 
+
+/bounding_box_cut seg_lo_bef seg_lo
+  -z_only  false
+  -border  0 
+
+/endif
+
+!-----------------------
+! save full AIM without the "air" voxels in a minimum size volume:
+! uses ipl_gobj0 temporarily
+/copy seg_lo box
+/set box 127 127
+/togobj box  "ipl_gobj5
+  -curvature_smooth           5
+/del box 
+/gobj org "ipl_gobj5
+/bound org org_bb
+/write org_bb "ipl_aim
+/del org
+
+! org used in analysis
+/ren org_bb org
+
+!----------------------------------------
+
+! Full bone
+/write seg_lo "ipl_fname0
+
+!-----Clear particles--------
+/bounding_box_cut seg_hi seg_hi2
+  -z_only  false
+  -border  0  
+
+/del seg_hi
+
+/cl_nr_extract
+  -input                     seg_hi2
+  -output                    seg_hi_cl
+  -min_number                20000
+  -max_number                0 
+
+/cl_ow_rank_extract
+  -input_output              seg_hi_cl
+  -first_rank                1
+  -last_rank                 2
+  -connect_boundary          false
+  -value_in_range            127
+  -topology                  6
+
+
+/bounding_box_cut seg_hi_cl seg_hi
+  -z_only false
+  -border  1 1 1  
+
+/del seg_hi2
+/del seg_hi_cl
+
+
+!----- Masking of entire bone (will be used for Ca.Th) -----
+! scale down by "ipl_misc1_3 to save computing time on erosion dilation 
+
+/scale_elsize  
+  -input                     seg_hi
+  -output                    seg_scaled
+  -down_scale                "ipl_misc1_3
+  -up_scale                  1
+  -integrate                 false
+
+! fill all holes by dil/ero strat
+/dilation
+  -input                     seg_scaled
+  -output                    scaled_dil
+  -dilate_distance           "ipl_misc1_2
+
+
+/fill_holes
+  -input                     scaled_dil
+  -output                    dil_fill
+  -border                    1 1 0
+  -topology                  6
+
+/calculate1d "ipl_misc1_2 + 1 int64 ero_val
+
+/erosion
+  -input                     dil_fill
+  -output                    fill_ero
+  -erode_distance            "ero_val
+  -use_previous_margin       false
+
+/scale_elsize  
+  -input                     fill_ero
+  -output                    ero_rescale
+  -down_scale                1
+  -up_scale                  "ipl_misc1_3
+  -integrate                 false
+
+/del seg_scaled
+/del scaled_dil
+/del dil_fill
+/del fill_ero
+
+!----- This is to avoid removing thin layers on top of the bone -----
+/concat ero_rescale seg_hi mask
+  -common_region_only        false
+  -add_not_overlay           false
+
+/del ero_rescale
+
+/togobj_from_aim
+  -input                     mask
+  -output                    "ipl_gobj0
+  -curvature_smooth          5
+
+/write mask "ipl_fname1
+
+! The ring
+! "ipl_misc1_0 (0-100)) (%) (default 50) ->  ring start in relation to the bone
+! "ipl_misc1_1 -> ring height (mm) (default 1)
+
+! create the variables with the inputs/defaults
+/if "ipl_misc1_0 eqs undef_symbol
+  /set_symbol ring_start 0.5
+/else 
+  /calculate1d "ipl_misc1_0 / 100 double ring_start
+/endif
+
+/if "ipl_misc1_1 eqs undef_symbol
+  /set_symbol ring_dim_mm 1
+/else
+  /set_symbol ring_dim_mm "ipl_misc1_1
+/endif
+
+/set_symbol_prefix calc_
+/exa mask geo
+
+/calculate1d "calc_dim_z * "ring_start int64 ring_pos_z
+/calculate1d "ring_dim_mm / "calc_elsize_z_mm int64 ring_dim_z 
+
+! get aim of midshaft ring from seg_hi
+/sub_get
+  -input                     seg_hi
+  -output                    ring
+  -pos                        0  0 "ring_pos_z
+  -dim                       -1 -1 "ring_dim_z
+  -global_pos_flag           false
+
+
+! create a perio_ring for analysis and gobj
+/concat ring mask perio_ring
+  -common_region_only        true
+  -add_not_overlay           false
+
+
+! ring_filled (no holes) with dil/ero strat (double the downscaled misc1_2 distance) 
+/calculate1d "ipl_misc1_2 * 2 int64 dil_val
+
+/dilation
+  -input                     ring
+  -output                    ring_dil
+  -dilate_distance           "dil_val
+
+/calculate1d "dil_val + 1 int64 ero_val
+
+/erosion
+  -input                     ring_dil
+  -output                    ring_ero
+  -erode_distance            "ero_val
+  -use_previous_margin       false
+
+/concat ring_ero ring ring_filled
+  -common_region_only        false
+  -add_not_overlay           false
+
+/togobj_from_aim ring_filled "ipl_gobj1
+  -curvature_smooth          5
+
+/write ring "ipl_segaim  
+
+!-----------------------------------!
+!    Morphometric Analysis - Full   !
+!-----------------------------------!
+
+/db_e3_clear_eval
+  -type                      e44
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+
+!
+! ct.v by vox
+!
+
+/set_symbol_prefix full_
+/copy seg_lo full 
+
+/exa full geo
+
+/voxgobj_scanco_param
+  -input                     full
+  -gobj_filename             "ipl_gobj0
+  -peel_iter                 -1
+  -region_number             0
+
+
+/vox_scanco_param
+  -input                     full
+
+!
+! BMD
+!
+
+/set_symbol_prefix mean_full_
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_gobj0
+  -peel_iter                 "ipl_peel0
+  -region_number             0
+
+
+!-----------------------------------!
+!    Morphometric Analysis - Ring   !
+!-----------------------------------!
+
+!
+! TMD
+!
+
+/set_symbol_prefix mean_ring_
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_gobj1
+  -peel_iter                 2
+  -region_number             1
+
+/del org
+
+
+! dt object here because of db_set_mean_accuray
+
+/set_symbol_prefix dto_
+
+/dt_object
+  -input                     ring_filled
+  -output                    out
+  -gobj_filename             none
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       screen
+
+/del out
+
+! set the prefix for exa, moi
+/set_symbol_prefix ring_
+
+/exa ring geo
+
+!check ring mean accuracy for e3 
+/calculate1d "ring_elsize_x_mm * 6 d ref_value
+
+/if "dto_th_mean lt "ref_value
+
+  /set_symbol org2_vox_mu_flag 3
+
+/endif
+
+! do vox_gobj on ring for calculations at the end
+
+/voxgobj_scanco_param
+  -input                     ring
+  -gobj_filename             "ipl_gobj1
+  -peel_iter                 "ipl_peel1
+  -region_number             0
+
+/vox_scanco_param
+  -input                     ring
+
+!
+! MOI
+!
+
+/moment2d_of_inertia
+  -input                     ring
+  -fileout_or_screentab      "ipl_fname2
+  -turnangle_cw              0.000000
+
+!
+! Ct.th
+! ring_filled
+
+/set_symbol_prefix cort_
+
+/dt_object
+  -input                     ring_filled
+  -output                    cort_th
+  -gobj_filename             none
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname4
+
+/write cort_th               "ipl_fname3
+
+/del cort_th
+
+! calculate orientation with regard to z-axis
+/tri ring_filled tri
+  -gobj_filename             none
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+
+!
+! Periosteal perimeter & tt.ar
+!
+
+! create a gobj from the perio - smoothed for a good circumf
+/togobj_from_aim
+  -input                     perio_ring
+  -gobj_filename             "ipl_gobj3
+  -min_elements              0
+  -max_elements              0
+  -curvature_smooth          1
+
+/set_symbol_prefix outer_
+
+/voxgobj_scanco_param
+  -input                     perio_ring
+  -gobj_filename             "ipl_gobj3
+  -peel_iter                 0
+  -region_number             0
+
+/gobj_circumf_area
+  -gobj_filename             "ipl_gobj3
+  -fileout_or_screen         "ipl_fname5
+
+!
+! Endosteal perimeter & medullary area ma.ar
+!
+
+!
+/subtract_aims
+  -input1                    perio_ring
+  -input2                    ring_filled
+  -output                    endo_ring
+
+/del perio_ring
+
+! same for endo ring
+/togobj_from_aim
+  -input                     endo_ring
+  -gobj_filename             "ipl_gobj4
+  -min_elements              0
+  -max_elements              0
+  -curvature_smooth          1
+
+/set_symbol_prefix inner_
+
+/voxgobj_scanco_param
+  -input                     endo_ring
+  -gobj_filename             "ipl_gobj4
+  -peel_iter                 0
+  -region_number             0
+
+/gobj_circumf_area
+  -gobj_filename             "ipl_gobj4
+  -fileout_or_screen         "ipl_fname6
+
+/del endo_mask
+
+!
+! Porosity
+! 
+
+/copy ring ring_pores
+
+/invert_ow
+  -in_out                    ring_pores
+  -gobj_filename             "ipl_gobj1
+  -peel_iter                 -1
+
+/write ring_pores "ipl_fname7
+
+
+!
+! po.n, po.v.sd
+!
+
+/set_symbol_prefix po_
+
+/voxgobj_scanco_param
+  -input                     ring_pores
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -region_number             0
+
+!get pore number etc
+/cl_image
+  -input                     ring_pores
+  -output                    cl
+  -histofile_or_screentab    "ipl_fname8
+  -topology                  6
+  -type_out                  char
+
+/del cl
+
+!pore thickness
+/dt_object_param
+  -input                     ring_pores
+  -output                    pores_thickness
+  -gobj_filename             none
+  -peel_iter                 0
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -version2                  true
+  -histofile_or_screen       "ipl_fname10
+
+/write
+  -name                      pores_thickness
+  -filename                  "ipl_fname9
+
+/del pores_thickness
+
+! pores solid in transparent cortex, for control
+
+/transparent_concat
+  -input_solid               ring_pores
+  -input_transp              ring
+  -output                    trans
+
+/write trans "ipl_fname11
+
+!
+! More evals
+!
+
+/calculate1d "ring_elsize_z_mm * "ring_dim_z double ring_dimz_mm
+/calculate1d "ring_vox_tot_volume /  "ring_dimz_mm double ctar
+/calculate1d "outer_vox_obj_volume /  "ring_dimz_mm double ttar
+/calculate1d "ctar /  "ttar double ctar_ov_ttar
+/calculate1d "inner_vox_obj_volume /  "ring_dimz_mm double maar
+/calculate1d "po_vox_obj_volume / "po_cl_components double avgpov
+/calculate1d "po_cl_components / "ring_vox_tot_volume double po_dens
+/calculate1d "po_vox_obj_volume / "ring_vox_tot_volume double ctpo
+/calculate1d "ctpo * 100 double ctpo
+/calculate1d "ctar_ov_ttar * 100 double ct_area_frac
+
+!check if vectors point in same direction
+/if "cort_tri_h2_z lt 1
+  /calculate3d
+    -vec1                      0 0 -1
+    -symbol_name               unit_vec
+/else
+  /calculate3d
+    -vec1                      0 0 1
+    -symbol_name               unit_vec
+/endif
+
+/calculate3d
+  -vec1                      "cort_tri_h2_x "cort_tri_h2_y "cort_tri_h2_z
+  -operator                  angle
+  -vec2                      "unit_vec
+  -out_type                  double
+  -symbol_name               cort_angle_rad
+
+/calculate1d "cort_angle_rad * 180 double cort_angle_rad
+/calculate1d "cort_angle_rad / 3.14159265358979 double cort_angle_deg
+
+! do voxgobj scanco param on ring TODO
+/calculate1d "ring_vox_ov_tv * 100 double ring_vox_ov_tv
+
+/set_symbol cort_angle_deg_flag 1
+
+!approximate flag if angle > 5
+/if "cort_angle_deg gt 5
+
+  /set_symbol cort_angle_deg_flag 3
+
+/endif
+
+! Variables that dont have a ring_ or full_ prefix are on the ring
+
+/db_e3_write_064
+  -type                      e44
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "full_elsize_x_mm
+  -val001                    "full_elsize_y_mm
+  -val002                    "full_elsize_z_mm
+  -val003                    "full_dim_x
+  -val004                    "full_dim_y
+  -val005                    "full_dim_z
+  -val006                    "full_pos_x
+  -val007                    "full_pos_y
+  -val008                    "full_pos_z
+  -val009                    "full_sigma
+  -val010                    "full_support
+  -val011                    "full_unit_code
+  -val012                    "ring_lower_th
+  -val013                    "ring_native_lower_th
+  -val014                    "ring_upper_th
+  -val015                    "ring_native_upper_th
+  -val016                    "full_vox_tot_volume
+  -val017                    "full_vox_obj_volume
+  -val018                    "full_vox_ov_tv
+  -val019                    "mean_ring_vox_mu_mean
+  -val020                    "mean_ring_vox_mu_sd
+  -val021                    "mean_ring_vox_mu_flag
+  -val022                    "mean_full_vox_mu_mean
+  -val023                    "mean_full_vox_mu_sd
+  -val024                    "mean_full_vox_mu_flag
+  -val025                    "ttar
+  -val026                    "ctar
+  -val027                    "ct_area_frac
+  -val028                    "maar
+  -val029                    "ring_moi_cmx
+  -val030                    "ring_moi_cmy
+  -val031                    "ring_moi_ixx
+  -val032                    "ring_moi_iyy
+  -val033                    "ring_moi_ixy
+  -val034                    "ring_moi_pmoi
+  -val035                    "ring_moi_ixx_cy
+  -val036                    "ring_moi_iyy_cx
+  -val037                    "ring_moi_imax
+  -val038                    "ring_moi_imin
+  -val039                    "ring_moi_angle
+  -val040                    "ring_moi_imax_cmax
+  -val041                    "ring_moi_imin_cmin
+  -val042                    "cort_th_mean
+  -val043                    "cort_th_sd
+  -val044                    "cort_th_flag
+  -val045                    "outer_gobj_circum_mean
+  -val046                    "inner_gobj_circum_mean
+  -val047                    "po_cl_components
+  -val048                    "po_vox_obj_volume
+  -val049                    "po_cl_vol_sd
+  -val050                    "avgpov
+  -val051                    "po_dens
+  -val052                    "po_th_mean
+  -val053                    "po_th_sd
+  -val054                    "po_th_flag
+  -val055                    "ctpo
+  -val056                    "cort_angle_deg
+  -val057                    "cort_angle_deg_flag
+
+
+..

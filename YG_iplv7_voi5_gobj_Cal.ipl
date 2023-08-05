@@ -1,0 +1,1649 @@
+!
+!         _/_/_/  _/_/_/    _/
+!          _/    _/    _/  _/           Image Processing Language
+!         _/    _/_/_/    _/
+!        _/    _/        _/             (c) SCANCO Medical AG
+!     _/_/_/  _/        _/_/_/_/
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Segmentation of 4 Phases/Objects V1.1 !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! created: 11-OCT-2021 SW
+
+! note:    This script is adapted from IPLV6_VOI4.COM
+
+! modifications:
+! 11-JUN-2023: 5 VOIs based on GOBJ only
+
+
+! Segmentation of 5 Objects.
+! This script segments all objects according to a unique
+! threshold. Then 5 objects are separated based on GOBJs
+! The values of the segmented objects can be set.
+
+! Input:
+! Segmentation parameters.
+! misc1_0: Value of bone outside VOIs
+! misc1_1: Value of porosity
+!          Value of bone in VOIs (misc1_0 + misc1_1)
+! misc1_2: Dilation - Nb of voxels
+! misc1_3: Erosion  - Nb of voxels (recommended Ero = Dil + 1)
+! misc1_4: Empty...
+
+!!! Add +10 to x and y dims !!!!
+
+/db_scanco_activate
+  -write                     true
+  -type                      2
+
+/db_e3_clear_eval
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+
+/calculate1d "ipl_voix - 10 d ipl_voix
+/calculate1d "ipl_voiy - 10 d ipl_voiy
+/calculate1d "ipl_voidx + 20 d ipl_voidx
+/calculate1d "ipl_voidy + 20 d ipl_voidy
+
+/isq_to_aim
+  -aim_name                  org
+  -isq_filename              "ipl_isq
+  -pos                       "ipl_voix "ipl_voiy "ipl_voiz
+  -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+
+/sup org
+  -supdim_numbers            4 4 1
+  -testoff_pixels            "ipl_support0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/seg_gauss org seg
+  -sigma                     "ipl_sigma0
+  -support                   "ipl_support0
+  -low                       "ipl_lower0
+  -upp                       "ipl_upper0
+  -unit                      "ipl_unit0
+  -value                     "ipl_misc1_0
+
+/write  seg    "ipl_segaim
+
+!----- We do not remove thin layers on top of bone -----
+!----- Masking of entire bone (will be used for Ca.Th) -----
+
+!!!Place holder for alt version
+
+/set seg 127 0           
+
+/cl_nr_extract
+  -input                     seg
+  -output                    cl
+  -min_number                20000
+  -max_number                0
+
+/dilation
+  -input                     cl
+  -output                    dil1
+  -dilate_distance           "ipl_misc1_2
+
+
+ /fill_holes
+  -input                     dil1
+  -output                    dil
+  -border                    1 1 0
+  -topology                  6
+
+/erosion
+  -input                     dil
+  -output                    ero
+  -erode_distance            "ipl_misc1_3
+  -use_previous_margin       true
+
+ /del dil
+ /del dil1
+
+ /bounding_box_cut ero mask
+  -z_only false
+  -border 2
+ /del ero
+
+ ! Deleted: set values for seg and mask
+
+ /concat mask seg mask_a
+  -common_region_only        false
+  -add_not_overlay           true
+ /del mask
+
+!/writ  mask_a "ipl_fname5 
+!!! AT THIS POINT THE MASK CONSISTS OF THE ENTIRE CALVARIA WITH FILLED POROSITY 
+
+!--------------------------------
+
+! Divide the MASK into 5 sub masks (PR, PL, FR, FL, O) 
+
+!-----Individual gobjs------------------
+!!! Check with Scanco how to define IF the F$SEARCH(XX_GOBJ) exists then...!!!!!!!!!!!!
+
+
+/copy  mask_a  mask_0 
+  /gobj
+    -input_output              mask_0
+    -gobj_filename             "ipl_gobj0
+    -peel_iter                 "ipl_peel0
+  /write mask_0 "ipl_fname0
+
+/copy  mask_a  mask_1 
+  /gobj
+    -input_output              mask_1
+    -gobj_filename             "ipl_gobj1
+    -peel_iter                 "ipl_peel1
+  /write mask_1 "ipl_fname1
+
+/copy  mask_a  mask_2 
+  /gobj
+    -input_output              mask_2
+    -gobj_filename             "ipl_gobj2
+    -peel_iter                 "ipl_peel2
+  /write mask_2 "ipl_fname2
+
+/copy  mask_a  mask_3
+  /gobj
+    -input_output              mask_3
+    -gobj_filename             "ipl_gobj3
+    -peel_iter                 "ipl_peel3
+  /write mask_3 "ipl_fname3
+
+/copy  mask_a  mask_4 
+  /gobj
+    -input_output              mask_4
+    -gobj_filename             "ipl_gobj4
+    -peel_iter                 "ipl_peel4
+  /write mask_4 "ipl_fname4
+
+!---------------------------------------------
+! Concatenate all individual VOIS into SEG_ALL 
+!---------------------------------------------
+
+/add_aims
+  -input1                    mask_0
+  -input2                    mask_1
+  -output                    mask01
+
+/add_aims
+  -input1                    mask01
+  -input2                    mask_2
+  -output                    mask012
+
+/add_aims
+  -input1                    mask012
+  -input2                    mask_3
+  -output                    mask0123
+
+/add_aims
+  -input1                    mask0123
+  -input2                    mask_4
+  -output                    mask01234
+
+/set seg       "ipl_misc1_0 0
+/set mask01234 "ipl_misc1_1 0 
+
+/concat seg mask01234 seg_all
+  -common_region_only        false
+  -add_not_overlay           true
+
+/write seg_all "ipl_fname5
+
+/set seg 127 0
+
+!---------------------------------------------!
+!           MORPHOMETRIC ANALYSES             !
+!---------------------------------------------!
+
+!----------------------------------------------------!
+!           REGION 1 = PR (parietal Right)           !
+!----------------------------------------------------!
+
+/set_symbol ipl_mask "ipl_fname0
+/set_symbol ipl_gobj "ipl_gobj0
+/set_symbol voi      1
+
+! Seems not necessary:
+!/db_scanco_activate
+!  -write                     true
+!  -type                      2
+
+/db_e3_clear_eval
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+
+
+/set_symbol_prefix seg_
+!!!
+/read seg  "ipl_segaim
+/read mask "ipl_mask
+/gobj seg  "ipl_mask
+/exa  seg  geo
+
+!
+! voxel counting
+!
+
+/vox_scanco_param
+  -input                     seg
+
+
+/set_symbol_prefix org_
+
+!
+! BMD (apparent density)
+!
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_mask
+  -peel_iter                 "ipl_peel0
+  -region_number             0
+!!!
+/set_symbol_prefix org2_
+
+!
+! TMD (density of segmented volume)
+!
+!!!
+/copy org org1
+/gobj org "ipl_mask
+!!!
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_segaim
+  -peel_iter                 2
+  -region_number             1
+
+/copy org1 org
+
+!----------------------------------------------
+! dt object here because of db_set_mean_accuray
+!----------------------------------------------
+
+/set_symbol_prefix dto_
+
+!
+! Thickness
+!
+
+/dt_object
+  -input                     mask
+  -output                    out
+  -gobj_filename             "ipl_gobj
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname7
+
+/write  out    "ipl_fname6
+
+/del out
+
+!
+!check mean accuracy for e3
+!
+
+/calculate1d "seg_vox_elsize_x_mm * 6 double ref_value
+
+/if "dto_th_mean lt "ref_value
+
+   /set_symbol org2_vox_mu_flag 3
+
+/endif
+
+
+!-----------
+! tri values
+!-----------
+
+/sup seg
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/set_symbol_prefix
+  -symbol_prefix             tri_
+
+/tri seg tri
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+!-----------
+! Connectivity density !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             con_
+
+!/connectivity
+!  -in_out                    seg
+
+!!check volume after connectivity (uses cl)
+!/vox_scanco_param
+!  -input                     seg
+
+!! If less than 90% initial bone volume is taken for connectvity calculation 
+!! Then, choose 'approximate flag' for connectivity 
+
+!calculate1d "con_vox_obj_volume / "seg_vox_obj_volume double conn_ratio
+
+!/if "conn_ratio lt 0.9
+!  /set_symbol con_conn_flag 3
+!/else
+!  /set_symbol con_conn_flag 1
+!/endif
+
+
+!! connectivity changes the input volume
+!/read seg "ipl_segaim
+
+
+!-----------
+! trabecular spacing
+!-----------
+
+/set_symbol_prefix
+  -symbol_prefix             dtb_
+
+/dt_background
+  -input                     seg
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname9
+
+/write  out    "ipl_fname8
+
+/del out
+
+
+!-----------
+! trabecular number !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             dtm_
+
+
+!/dt_mat
+!  -input                     seg
+!  -output                    out
+!  -gobj_filename             gobj_from_log
+!  -peel_iter                 -1
+!  -roi_radius_factor         10000.000000
+!  -ridge_epsilon             0.900000
+!  -assign_epsilon            1.800000
+!  -histofile_or_screen       "ipl_fname10
+
+!!!
+!
+! Calculate values for db
+!
+
+/calculate1d "seg_vox_obj_volume / "seg_vox_tot_volume double seg_vox_ov_tv
+/calculate1d "seg_vox_ov_tv * 100 double seg_vox_ov_tv
+
+/calculate1d "tri_tri_obj_volume  / "tri_tri_tot_volume double tri_tri_ov_tv
+/calculate1d "tri_tri_ov_tv * 100 double tri_tri_ov_tv
+
+/calculate1d "tri_tri_obj_surface / "tri_tri_tot_volume double tri_tri_bs_tv
+/calculate1d "tri_tri_obj_surface / "tri_tri_obj_volume double tri_tri_bs_bv
+
+/calculate1d "conn_ratio * 100 double conn_ratio
+
+!!! Here, the symbol for "region" has been changed to "voi which is defined as 0, 1, 2... 
+!!! for each VOI (PR, PL...)
+
+/db_e3_write_064
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "seg_elsize_x_mm
+  -val001                    "seg_elsize_y_mm
+  -val002                    "seg_elsize_z_mm
+  -val003                    "seg_dim_x
+  -val004                    "seg_dim_y
+  -val005                    "seg_dim_z
+  -val006                    "seg_pos_x
+  -val007                    "seg_pos_y
+  -val008                    "seg_pos_z
+  -val009                    "seg_sigma
+  -val010                    "seg_support
+  -val011                    "seg_unit_code
+  -val012                    "seg_lower_th
+  -val013                    "seg_native_lower_th
+  -val014                    "seg_upper_th
+  -val015                    "seg_native_upper_th
+  -val016                    "seg_vox_tot_volume
+  -val017                    "seg_vox_obj_volume
+  -val018                    "seg_vox_ov_tv
+  -val019                    "org2_vox_mu_mean
+  -val020                    "org2_vox_mu_sd
+  -val021                    "org2_vox_mu_flag
+  -val022                    "org_vox_mu_mean
+  -val023                    "org_vox_mu_sd
+  -val024                    "org_vox_mu_flag
+  -val025                    "dto_th_mean
+  -val026                    "dto_th_sd
+  -val027                    "dto_th_flag
+  -val028                    "tri_tri_tot_volume
+  -val029                    "tri_tri_obj_volume
+  -val030                    "tri_tri_ov_tv
+  -val031                    "tri_tri_obj_surface
+  -val032                    "tri_tri_bs_tv
+  -val033                    "tri_tri_bs_bv
+  -val034                    "tri_tri_smi
+  -val035                    "tri_tri_da
+  -val036                    "tri_tri_h1_abs
+  -val037                    "tri_tri_h2_abs
+  -val038                    "tri_tri_h3_abs
+  -val039                    "tri_tri_h1_x
+  -val040                    "tri_tri_h1_y
+  -val041                    "tri_tri_h1_z
+  -val042                    "tri_tri_h2_x
+  -val043                    "tri_tri_h2_y
+  -val044                    "tri_tri_h2_z
+  -val045                    "tri_tri_h3_x
+  -val046                    "tri_tri_h3_y
+  -val047                    "tri_tri_h3_z
+  -val048                    "tri_tri_flag
+  -val049                    0
+  -val050                    0
+  -val051                    0
+  -val052                    "dtb_sp_mean
+  -val053                    "dtb_sp_sd
+  -val054                    "dtb_sp_flag
+  -val055                    0
+  -val056                    0
+  -val057                    0
+!!! Duplicates:
+!  -val049                    "con_conn_density
+!  -val050                    "conn_ratio
+!  -val051                    "con_conn_flag
+!  -val052                    "dtb_sp_mean
+!  -val053                    "dtb_sp_sd
+!  -val054                    "dtb_sp_flag
+!  -val055                    "dtm_mat_n_mean
+!  -val056                    "dtm_mat_sp_sd
+!  -val057                    "dtm_mat_sp_flag
+
+!----------------------------------------------------!
+!           REGION 2 = PL (parietal left)            !
+!----------------------------------------------------!
+
+/set_symbol ipl_mask "ipl_fname1
+/set_symbol voi      2
+/set_symbol ipl_gobj "ipl_gobj1
+
+
+! Seems not necessary:
+!/db_scanco_activate
+!  -write                     true
+!  -type                      2
+
+/db_e3_clear_eval
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+
+
+/set_symbol_prefix seg_
+!!!
+/read seg  "ipl_segaim
+/read mask "ipl_mask
+/gobj seg  "ipl_mask
+/exa  seg  geo
+
+!
+! voxel counting
+!
+
+/vox_scanco_param
+  -input                     seg
+
+
+/set_symbol_prefix org_
+
+!
+! BMD (apparent density)
+!
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_mask
+  -peel_iter                 "ipl_peel0
+  -region_number             0
+!!!
+/set_symbol_prefix org2_
+
+!
+! TMD (density of segmented volume)
+!
+!!!
+/copy org org1
+/gobj org "ipl_mask
+!!!
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_segaim
+  -peel_iter                 2
+  -region_number             1
+
+/copy org1 org
+
+!----------------------------------------------
+! dt object here because of db_set_mean_accuray
+!----------------------------------------------
+
+/set_symbol_prefix dto_
+
+!
+! Thickness
+!
+
+/dt_object
+  -input                     mask
+  -output                    out
+  -gobj_filename             "ipl_gobj
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname7
+
+/write  out    "ipl_fname6
+
+/del out
+
+!
+!check mean accuracy for e3
+!
+
+/calculate1d "seg_vox_elsize_x_mm * 6 double ref_value
+
+/if "dto_th_mean lt "ref_value
+
+   /set_symbol org2_vox_mu_flag 3
+
+/endif
+
+
+!-----------
+! tri values
+!-----------
+
+/sup seg
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/set_symbol_prefix
+  -symbol_prefix             tri_
+
+/tri seg tri
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+!-----------
+! Connectivity density !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             con_
+
+!/connectivity
+!  -in_out                    seg
+
+!!check volume after connectivity (uses cl)
+!/vox_scanco_param
+!  -input                     seg
+
+!! If less than 90% initial bone volume is taken for connectvity calculation 
+!! Then, choose 'approximate flag' for connectivity 
+
+!calculate1d "con_vox_obj_volume / "seg_vox_obj_volume double conn_ratio
+
+!/if "conn_ratio lt 0.9
+!  /set_symbol con_conn_flag 3
+!/else
+!  /set_symbol con_conn_flag 1
+!/endif
+
+
+!! connectivity changes the input volume
+!/read seg "ipl_segaim
+
+
+!-----------
+! trabecular spacing
+!-----------
+
+/set_symbol_prefix
+  -symbol_prefix             dtb_
+
+/dt_background
+  -input                     seg
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname9
+
+/write  out    "ipl_fname8
+
+/del out
+
+
+!-----------
+! trabecular number !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             dtm_
+
+
+!/dt_mat
+!  -input                     seg
+!  -output                    out
+!  -gobj_filename             gobj_from_log
+!  -peel_iter                 -1
+!  -roi_radius_factor         10000.000000
+!  -ridge_epsilon             0.900000
+!  -assign_epsilon            1.800000
+!  -histofile_or_screen       "ipl_fname10
+
+!!!
+!
+! Calculate values for db
+!
+
+/calculate1d "seg_vox_obj_volume / "seg_vox_tot_volume double seg_vox_ov_tv
+/calculate1d "seg_vox_ov_tv * 100 double seg_vox_ov_tv
+
+/calculate1d "tri_tri_obj_volume  / "tri_tri_tot_volume double tri_tri_ov_tv
+/calculate1d "tri_tri_ov_tv * 100 double tri_tri_ov_tv
+
+/calculate1d "tri_tri_obj_surface / "tri_tri_tot_volume double tri_tri_bs_tv
+/calculate1d "tri_tri_obj_surface / "tri_tri_obj_volume double tri_tri_bs_bv
+
+/calculate1d "conn_ratio * 100 double conn_ratio
+
+!!! Here, the symbol for "region" has been changed to "voi which is defined as 0, 1, 2... 
+!!! for each VOI (PR, PL...)
+
+/db_e3_write_064
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "seg_elsize_x_mm
+  -val001                    "seg_elsize_y_mm
+  -val002                    "seg_elsize_z_mm
+  -val003                    "seg_dim_x
+  -val004                    "seg_dim_y
+  -val005                    "seg_dim_z
+  -val006                    "seg_pos_x
+  -val007                    "seg_pos_y
+  -val008                    "seg_pos_z
+  -val009                    "seg_sigma
+  -val010                    "seg_support
+  -val011                    "seg_unit_code
+  -val012                    "seg_lower_th
+  -val013                    "seg_native_lower_th
+  -val014                    "seg_upper_th
+  -val015                    "seg_native_upper_th
+  -val016                    "seg_vox_tot_volume
+  -val017                    "seg_vox_obj_volume
+  -val018                    "seg_vox_ov_tv
+  -val019                    "org2_vox_mu_mean
+  -val020                    "org2_vox_mu_sd
+  -val021                    "org2_vox_mu_flag
+  -val022                    "org_vox_mu_mean
+  -val023                    "org_vox_mu_sd
+  -val024                    "org_vox_mu_flag
+  -val025                    "dto_th_mean
+  -val026                    "dto_th_sd
+  -val027                    "dto_th_flag
+  -val028                    "tri_tri_tot_volume
+  -val029                    "tri_tri_obj_volume
+  -val030                    "tri_tri_ov_tv
+  -val031                    "tri_tri_obj_surface
+  -val032                    "tri_tri_bs_tv
+  -val033                    "tri_tri_bs_bv
+  -val034                    "tri_tri_smi
+  -val035                    "tri_tri_da
+  -val036                    "tri_tri_h1_abs
+  -val037                    "tri_tri_h2_abs
+  -val038                    "tri_tri_h3_abs
+  -val039                    "tri_tri_h1_x
+  -val040                    "tri_tri_h1_y
+  -val041                    "tri_tri_h1_z
+  -val042                    "tri_tri_h2_x
+  -val043                    "tri_tri_h2_y
+  -val044                    "tri_tri_h2_z
+  -val045                    "tri_tri_h3_x
+  -val046                    "tri_tri_h3_y
+  -val047                    "tri_tri_h3_z
+  -val048                    "tri_tri_flag
+  -val049                    0
+  -val050                    0
+  -val051                    0
+  -val052                    "dtb_sp_mean
+  -val053                    "dtb_sp_sd
+  -val054                    "dtb_sp_flag
+  -val055                    0
+  -val056                    0
+  -val057                    0
+
+!----------------------------------------------------!
+!           REGION 3 = FR (Frontal Right)            !
+!----------------------------------------------------!
+
+/set_symbol ipl_mask "ipl_fname2
+/set_symbol voi      3
+/set_symbol ipl_gobj "ipl_gobj2
+
+
+! Seems not necessary:
+!/db_scanco_activate
+!  -write                     true
+!  -type                      2
+
+/db_e3_clear_eval
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+
+
+/set_symbol_prefix seg_
+!!!
+/read seg  "ipl_segaim
+/read mask "ipl_mask
+/gobj seg  "ipl_mask
+/exa  seg  geo
+
+!
+! voxel counting
+!
+
+/vox_scanco_param
+  -input                     seg
+
+
+/set_symbol_prefix org_
+
+!
+! BMD (apparent density)
+!
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_mask
+  -peel_iter                 "ipl_peel0
+  -region_number             0
+!!!
+/set_symbol_prefix org2_
+
+!
+! TMD (density of segmented volume)
+!
+!!!
+/copy org org1
+/gobj org "ipl_mask
+!!!
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_segaim
+  -peel_iter                 2
+  -region_number             1
+
+/copy org1 org
+
+!----------------------------------------------
+! dt object here because of db_set_mean_accuray
+!----------------------------------------------
+
+/set_symbol_prefix dto_
+
+!
+! Thickness
+!
+
+/dt_object
+  -input                     mask
+  -output                    out
+  -gobj_filename             "ipl_gobj
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname7
+
+/write  out    "ipl_fname6
+
+/del out
+
+!
+!check mean accuracy for e3
+!
+
+/calculate1d "seg_vox_elsize_x_mm * 6 double ref_value
+
+/if "dto_th_mean lt "ref_value
+
+   /set_symbol org2_vox_mu_flag 3
+
+/endif
+
+
+!-----------
+! tri values
+!-----------
+
+/sup seg
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/set_symbol_prefix
+  -symbol_prefix             tri_
+
+/tri seg tri
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+!-----------
+! Connectivity density !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             con_
+
+!/connectivity
+!  -in_out                    seg
+
+!!check volume after connectivity (uses cl)
+!/vox_scanco_param
+!  -input                     seg
+
+!! If less than 90% initial bone volume is taken for connectvity calculation 
+!! Then, choose 'approximate flag' for connectivity 
+
+!calculate1d "con_vox_obj_volume / "seg_vox_obj_volume double conn_ratio
+
+!/if "conn_ratio lt 0.9
+!  /set_symbol con_conn_flag 3
+!/else
+!  /set_symbol con_conn_flag 1
+!/endif
+
+
+!! connectivity changes the input volume
+!/read seg "ipl_segaim
+
+
+!-----------
+! trabecular spacing
+!-----------
+
+/set_symbol_prefix
+  -symbol_prefix             dtb_
+
+/dt_background
+  -input                     seg
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname9
+
+/write  out    "ipl_fname8
+
+/del out
+
+
+!-----------
+! trabecular number !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             dtm_
+
+
+!/dt_mat
+!  -input                     seg
+!  -output                    out
+!  -gobj_filename             gobj_from_log
+!  -peel_iter                 -1
+!  -roi_radius_factor         10000.000000
+!  -ridge_epsilon             0.900000
+!  -assign_epsilon            1.800000
+!  -histofile_or_screen       "ipl_fname10
+
+!!!
+!
+! Calculate values for db
+!
+
+/calculate1d "seg_vox_obj_volume / "seg_vox_tot_volume double seg_vox_ov_tv
+/calculate1d "seg_vox_ov_tv * 100 double seg_vox_ov_tv
+
+/calculate1d "tri_tri_obj_volume  / "tri_tri_tot_volume double tri_tri_ov_tv
+/calculate1d "tri_tri_ov_tv * 100 double tri_tri_ov_tv
+
+/calculate1d "tri_tri_obj_surface / "tri_tri_tot_volume double tri_tri_bs_tv
+/calculate1d "tri_tri_obj_surface / "tri_tri_obj_volume double tri_tri_bs_bv
+
+/calculate1d "conn_ratio * 100 double conn_ratio
+
+!!! Here, the symbol for "region" has been changed to "voi which is defined as 0, 1, 2... 
+!!! for each VOI (PR, PL...)
+
+/db_e3_write_064
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "seg_elsize_x_mm
+  -val001                    "seg_elsize_y_mm
+  -val002                    "seg_elsize_z_mm
+  -val003                    "seg_dim_x
+  -val004                    "seg_dim_y
+  -val005                    "seg_dim_z
+  -val006                    "seg_pos_x
+  -val007                    "seg_pos_y
+  -val008                    "seg_pos_z
+  -val009                    "seg_sigma
+  -val010                    "seg_support
+  -val011                    "seg_unit_code
+  -val012                    "seg_lower_th
+  -val013                    "seg_native_lower_th
+  -val014                    "seg_upper_th
+  -val015                    "seg_native_upper_th
+  -val016                    "seg_vox_tot_volume
+  -val017                    "seg_vox_obj_volume
+  -val018                    "seg_vox_ov_tv
+  -val019                    "org2_vox_mu_mean
+  -val020                    "org2_vox_mu_sd
+  -val021                    "org2_vox_mu_flag
+  -val022                    "org_vox_mu_mean
+  -val023                    "org_vox_mu_sd
+  -val024                    "org_vox_mu_flag
+  -val025                    "dto_th_mean
+  -val026                    "dto_th_sd
+  -val027                    "dto_th_flag
+  -val028                    "tri_tri_tot_volume
+  -val029                    "tri_tri_obj_volume
+  -val030                    "tri_tri_ov_tv
+  -val031                    "tri_tri_obj_surface
+  -val032                    "tri_tri_bs_tv
+  -val033                    "tri_tri_bs_bv
+  -val034                    "tri_tri_smi
+  -val035                    "tri_tri_da
+  -val036                    "tri_tri_h1_abs
+  -val037                    "tri_tri_h2_abs
+  -val038                    "tri_tri_h3_abs
+  -val039                    "tri_tri_h1_x
+  -val040                    "tri_tri_h1_y
+  -val041                    "tri_tri_h1_z
+  -val042                    "tri_tri_h2_x
+  -val043                    "tri_tri_h2_y
+  -val044                    "tri_tri_h2_z
+  -val045                    "tri_tri_h3_x
+  -val046                    "tri_tri_h3_y
+  -val047                    "tri_tri_h3_z
+  -val048                    "tri_tri_flag
+  -val049                    0
+  -val050                    0
+  -val051                    0
+  -val052                    "dtb_sp_mean
+  -val053                    "dtb_sp_sd
+  -val054                    "dtb_sp_flag
+  -val055                    0
+  -val056                    0
+  -val057                    0
+
+!----------------------------------------------------!
+!           REGION 4 = FL (Frontal Left)             !
+!----------------------------------------------------!
+
+/set_symbol ipl_mask "ipl_fname3
+/set_symbol voi      4
+/set_symbol ipl_gobj "ipl_gobj3
+
+
+! Seems not necessary:
+!/db_scanco_activate
+!  -write                     true
+!  -type                      2
+
+/db_e3_clear_eval
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+
+
+/set_symbol_prefix seg_
+!!!
+/read seg  "ipl_segaim
+/read mask "ipl_mask
+/gobj seg  "ipl_mask
+/exa  seg  geo
+
+!
+! voxel counting
+!
+
+/vox_scanco_param
+  -input                     seg
+
+
+/set_symbol_prefix org_
+
+!
+! BMD (apparent density)
+!
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_mask
+  -peel_iter                 "ipl_peel0
+  -region_number             0
+!!!
+/set_symbol_prefix org2_
+
+!
+! TMD (density of segmented volume)
+!
+!!!
+/copy org org1
+/gobj org "ipl_mask
+!!!
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_segaim
+  -peel_iter                 2
+  -region_number             1
+
+/copy org1 org
+
+!----------------------------------------------
+! dt object here because of db_set_mean_accuray
+!----------------------------------------------
+
+/set_symbol_prefix dto_
+
+!
+! Thickness
+!
+
+/dt_object
+  -input                     mask
+  -output                    out
+  -gobj_filename             "ipl_gobj
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname7
+
+/write  out    "ipl_fname6
+
+/del out
+
+!
+!check mean accuracy for e3
+!
+
+/calculate1d "seg_vox_elsize_x_mm * 6 double ref_value
+
+/if "dto_th_mean lt "ref_value
+
+   /set_symbol org2_vox_mu_flag 3
+
+/endif
+
+!-----------
+! tri values
+!-----------
+
+/sup seg
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/set_symbol_prefix
+  -symbol_prefix             tri_
+
+/tri seg tri
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+!-----------
+! Connectivity density !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             con_
+
+!/connectivity
+!  -in_out                    seg
+
+!!check volume after connectivity (uses cl)
+!/vox_scanco_param
+!  -input                     seg
+
+!! If less than 90% initial bone volume is taken for connectvity calculation 
+!! Then, choose 'approximate flag' for connectivity 
+
+!calculate1d "con_vox_obj_volume / "seg_vox_obj_volume double conn_ratio
+
+!/if "conn_ratio lt 0.9
+!  /set_symbol con_conn_flag 3
+!/else
+!  /set_symbol con_conn_flag 1
+!/endif
+
+
+!! connectivity changes the input volume
+!/read seg "ipl_segaim
+
+
+!-----------
+! trabecular spacing
+!-----------
+
+/set_symbol_prefix
+  -symbol_prefix             dtb_
+
+/dt_background
+  -input                     seg
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname9
+
+/write  out    "ipl_fname8
+
+/del out
+
+
+!-----------
+! trabecular number !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             dtm_
+
+
+!/dt_mat
+!  -input                     seg
+!  -output                    out
+!  -gobj_filename             gobj_from_log
+!  -peel_iter                 -1
+!  -roi_radius_factor         10000.000000
+!  -ridge_epsilon             0.900000
+!  -assign_epsilon            1.800000
+!  -histofile_or_screen       "ipl_fname10
+
+!!!
+!
+! Calculate values for db
+!
+
+/calculate1d "seg_vox_obj_volume / "seg_vox_tot_volume double seg_vox_ov_tv
+/calculate1d "seg_vox_ov_tv * 100 double seg_vox_ov_tv
+
+/calculate1d "tri_tri_obj_volume  / "tri_tri_tot_volume double tri_tri_ov_tv
+/calculate1d "tri_tri_ov_tv * 100 double tri_tri_ov_tv
+
+/calculate1d "tri_tri_obj_surface / "tri_tri_tot_volume double tri_tri_bs_tv
+/calculate1d "tri_tri_obj_surface / "tri_tri_obj_volume double tri_tri_bs_bv
+
+/calculate1d "conn_ratio * 100 double conn_ratio
+
+!!! Here, the symbol for "region" has been changed to "voi which is defined as 0, 1, 2... 
+!!! for each VOI (PR, PL...)
+
+/db_e3_write_064
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "seg_elsize_x_mm
+  -val001                    "seg_elsize_y_mm
+  -val002                    "seg_elsize_z_mm
+  -val003                    "seg_dim_x
+  -val004                    "seg_dim_y
+  -val005                    "seg_dim_z
+  -val006                    "seg_pos_x
+  -val007                    "seg_pos_y
+  -val008                    "seg_pos_z
+  -val009                    "seg_sigma
+  -val010                    "seg_support
+  -val011                    "seg_unit_code
+  -val012                    "seg_lower_th
+  -val013                    "seg_native_lower_th
+  -val014                    "seg_upper_th
+  -val015                    "seg_native_upper_th
+  -val016                    "seg_vox_tot_volume
+  -val017                    "seg_vox_obj_volume
+  -val018                    "seg_vox_ov_tv
+  -val019                    "org2_vox_mu_mean
+  -val020                    "org2_vox_mu_sd
+  -val021                    "org2_vox_mu_flag
+  -val022                    "org_vox_mu_mean
+  -val023                    "org_vox_mu_sd
+  -val024                    "org_vox_mu_flag
+  -val025                    "dto_th_mean
+  -val026                    "dto_th_sd
+  -val027                    "dto_th_flag
+  -val028                    "tri_tri_tot_volume
+  -val029                    "tri_tri_obj_volume
+  -val030                    "tri_tri_ov_tv
+  -val031                    "tri_tri_obj_surface
+  -val032                    "tri_tri_bs_tv
+  -val033                    "tri_tri_bs_bv
+  -val034                    "tri_tri_smi
+  -val035                    "tri_tri_da
+  -val036                    "tri_tri_h1_abs
+  -val037                    "tri_tri_h2_abs
+  -val038                    "tri_tri_h3_abs
+  -val039                    "tri_tri_h1_x
+  -val040                    "tri_tri_h1_y
+  -val041                    "tri_tri_h1_z
+  -val042                    "tri_tri_h2_x
+  -val043                    "tri_tri_h2_y
+  -val044                    "tri_tri_h2_z
+  -val045                    "tri_tri_h3_x
+  -val046                    "tri_tri_h3_y
+  -val047                    "tri_tri_h3_z
+  -val048                    "tri_tri_flag
+  -val049                    0
+  -val050                    0
+  -val051                    0
+  -val052                    "dtb_sp_mean
+  -val053                    "dtb_sp_sd
+  -val054                    "dtb_sp_flag
+  -val055                    0
+  -val056                    0
+  -val057                    0
+
+!----------------------------------------------------!
+!             REGION 5 = O (Occipital)               !
+!----------------------------------------------------!
+
+/set_symbol ipl_mask "ipl_fname4
+/set_symbol voi      5
+/set_symbol ipl_gobj "ipl_gobj4
+
+
+! Seems not necessary:
+!/db_scanco_activate
+!  -write                     true
+!  -type                      2
+
+/db_e3_clear_eval
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+
+
+/set_symbol_prefix seg_
+!!!
+/read seg  "ipl_segaim
+/read mask "ipl_mask
+/gobj seg  "ipl_mask
+/exa  seg  geo
+
+!
+! voxel counting
+!
+
+/vox_scanco_param
+  -input                     seg
+
+
+/set_symbol_prefix org_
+
+!
+! BMD (apparent density)
+!
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_mask
+  -peel_iter                 "ipl_peel0
+  -region_number             0
+!!!
+/set_symbol_prefix org2_
+
+!
+! TMD (density of segmented volume)
+!
+!!!
+/copy org org1
+/gobj org "ipl_mask
+!!!
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_segaim
+  -peel_iter                 2
+  -region_number             1
+
+/copy org1 org
+
+!----------------------------------------------
+! dt object here because of db_set_mean_accuray
+!----------------------------------------------
+
+/set_symbol_prefix dto_
+
+!
+! Thickness
+!
+
+/dt_object
+  -input                     mask
+  -output                    out
+  -gobj_filename             "ipl_gobj
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname7
+
+/write  out    "ipl_fname6
+
+/del out
+
+!
+!check mean accuracy for e3
+!
+
+/calculate1d "seg_vox_elsize_x_mm * 6 double ref_value
+
+/if "dto_th_mean lt "ref_value
+
+   /set_symbol org2_vox_mu_flag 3
+
+/endif
+
+
+!-----------
+! tri values
+!-----------
+
+/sup seg
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/set_symbol_prefix
+  -symbol_prefix             tri_
+
+/tri seg tri
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+!-----------
+! Connectivity density !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             con_
+
+!/connectivity
+!  -in_out                    seg
+
+!!check volume after connectivity (uses cl)
+!/vox_scanco_param
+!  -input                     seg
+
+!! If less than 90% initial bone volume is taken for connectvity calculation 
+!! Then, choose 'approximate flag' for connectivity 
+
+!calculate1d "con_vox_obj_volume / "seg_vox_obj_volume double conn_ratio
+
+!/if "conn_ratio lt 0.9
+!  /set_symbol con_conn_flag 3
+!/else
+!  /set_symbol con_conn_flag 1
+!/endif
+
+
+!! connectivity changes the input volume
+!/read seg "ipl_segaim
+
+
+!-----------
+! trabecular spacing
+!-----------
+
+/set_symbol_prefix
+  -symbol_prefix             dtb_
+
+/dt_background
+  -input                     seg
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname9
+
+/write  out    "ipl_fname8
+
+/del out
+
+
+!-----------
+! trabecular number !!! NOT NEEDED FOR CALVARIA
+!-----------
+
+!/set_symbol_prefix
+!  -symbol_prefix             dtm_
+
+
+!/dt_mat
+!  -input                     seg
+!  -output                    out
+!  -gobj_filename             gobj_from_log
+!  -peel_iter                 -1
+!  -roi_radius_factor         10000.000000
+!  -ridge_epsilon             0.900000
+!  -assign_epsilon            1.800000
+!  -histofile_or_screen       "ipl_fname10
+
+!!!
+!
+! Calculate values for db
+!
+
+/calculate1d "seg_vox_obj_volume / "seg_vox_tot_volume double seg_vox_ov_tv
+/calculate1d "seg_vox_ov_tv * 100 double seg_vox_ov_tv
+
+/calculate1d "tri_tri_obj_volume  / "tri_tri_tot_volume double tri_tri_ov_tv
+/calculate1d "tri_tri_ov_tv * 100 double tri_tri_ov_tv
+
+/calculate1d "tri_tri_obj_surface / "tri_tri_tot_volume double tri_tri_bs_tv
+/calculate1d "tri_tri_obj_surface / "tri_tri_obj_volume double tri_tri_bs_bv
+
+/calculate1d "conn_ratio * 100 double conn_ratio
+
+!!! Here, the symbol for "region" has been changed to "voi which is defined as 0, 1, 2... 
+!!! for each VOI (PR, PL...)
+
+/db_e3_write_064
+  -type                      e43
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "voi
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "seg_elsize_x_mm
+  -val001                    "seg_elsize_y_mm
+  -val002                    "seg_elsize_z_mm
+  -val003                    "seg_dim_x
+  -val004                    "seg_dim_y
+  -val005                    "seg_dim_z
+  -val006                    "seg_pos_x
+  -val007                    "seg_pos_y
+  -val008                    "seg_pos_z
+  -val009                    "seg_sigma
+  -val010                    "seg_support
+  -val011                    "seg_unit_code
+  -val012                    "seg_lower_th
+  -val013                    "seg_native_lower_th
+  -val014                    "seg_upper_th
+  -val015                    "seg_native_upper_th
+  -val016                    "seg_vox_tot_volume
+  -val017                    "seg_vox_obj_volume
+  -val018                    "seg_vox_ov_tv
+  -val019                    "org2_vox_mu_mean
+  -val020                    "org2_vox_mu_sd
+  -val021                    "org2_vox_mu_flag
+  -val022                    "org_vox_mu_mean
+  -val023                    "org_vox_mu_sd
+  -val024                    "org_vox_mu_flag
+  -val025                    "dto_th_mean
+  -val026                    "dto_th_sd
+  -val027                    "dto_th_flag
+  -val028                    "tri_tri_tot_volume
+  -val029                    "tri_tri_obj_volume
+  -val030                    "tri_tri_ov_tv
+  -val031                    "tri_tri_obj_surface
+  -val032                    "tri_tri_bs_tv
+  -val033                    "tri_tri_bs_bv
+  -val034                    "tri_tri_smi
+  -val035                    "tri_tri_da
+  -val036                    "tri_tri_h1_abs
+  -val037                    "tri_tri_h2_abs
+  -val038                    "tri_tri_h3_abs
+  -val039                    "tri_tri_h1_x
+  -val040                    "tri_tri_h1_y
+  -val041                    "tri_tri_h1_z
+  -val042                    "tri_tri_h2_x
+  -val043                    "tri_tri_h2_y
+  -val044                    "tri_tri_h2_z
+  -val045                    "tri_tri_h3_x
+  -val046                    "tri_tri_h3_y
+  -val047                    "tri_tri_h3_z
+  -val048                    "tri_tri_flag
+  -val049                    0
+  -val050                    0
+  -val051                    0
+  -val052                    "dtb_sp_mean
+  -val053                    "dtb_sp_sd
+  -val054                    "dtb_sp_flag
+  -val055                    0
+  -val056                    0
+  -val057                    0
+
+..
