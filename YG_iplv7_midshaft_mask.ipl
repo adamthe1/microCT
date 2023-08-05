@@ -85,7 +85,7 @@
 !
 
 
-/if "ipl_misc1_5 eq 1
+/if 0 eq 1
   /isq_to_aim
     -aim_name                  org
     -isq_filename              "ipl_isq
@@ -213,7 +213,7 @@
 /cl_ow_rank_extract
   -input_output              seg_hi_cl
   -first_rank                1
-  -last_rank                 2
+  -last_rank                 1
   -connect_boundary          false
   -value_in_range            127
   -topology                  6
