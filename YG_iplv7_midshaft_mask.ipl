@@ -181,7 +181,7 @@
 ! uses ipl_gobj0 temporarily
 /copy seg_lo box
 /set box 127 127
-/togobj_from_aim box  "ipl_fname14
+/togobj_from_aim box  "ipl_fname13
   -curvature_smooth           5
 /del box 
 /gobj org "ipl_gobj2
@@ -277,7 +277,7 @@
 
 /del ero_rescale
 
-/togobj_from_aim mask "ipl_fname13
+/togobj_from_aim mask "ipl_fname12
   -curvature_smooth          5
 
 /write mask "ipl_fname1
