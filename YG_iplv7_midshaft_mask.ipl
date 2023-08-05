@@ -184,7 +184,7 @@
 /togobj_from_aim box  "ipl_fname14
   -curvature_smooth           5
 /del box 
-/gobj org "ipl_gobj5
+/gobj org "ipl_gobj2
 /bound org org_bb
 /write org_bb "ipl_aim
 /del org
