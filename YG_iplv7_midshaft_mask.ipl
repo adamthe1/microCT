@@ -85,7 +85,7 @@
 !
 
 
-/if 0 eq 1
+/if 0 eq 0
   /isq_to_aim
     -aim_name                  org
     -isq_filename              "ipl_isq
@@ -622,8 +622,8 @@
 !
 
 /calculate1d "ring_elsize_z_mm * "ring_dim_z double ring_dimz_mm
-/calculate1d "ring_vox_tot_volume /  "ring_dimz_mm double ctar
-/calculate1d "outer_vox_obj_volume /  "ring_dimz_mm double ttar
+/calculate1d "ring_vox_tot_volume /  "ring_dimz_mm double ttar
+/calculate1d "outer_vox_obj_volume /  "ring_dimz_mm double ctar
 /calculate1d "ctar /  "ttar double ctar_ov_ttar
 /calculate1d "inner_vox_obj_volume /  "ring_dimz_mm double maar
 /calculate1d "po_vox_obj_volume / "po_cl_components double avgpov
