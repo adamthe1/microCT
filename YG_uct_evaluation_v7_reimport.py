@@ -41,7 +41,7 @@ misc_add       = os.environ['EVAL_MISC1_0']
 
 new_isq = default_letter + eval_fname[1:] + '.isq'
 new_isq_local = scratch_dir + new_isq
-tmp_isq = eval_dir + eval_fname + '_R.isq'
+tmp_isq = eval_dir + eval_fname + '_r.isq'
 
 #
 # ! Check if misc1_* parameter 'reimport' exists
