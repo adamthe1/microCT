@@ -69,7 +69,7 @@ if reimport_flag == 1:
       print(f'"{scanco_uct_import_exe}" -i={new_isq_local} -s={str(int(eval_sampno) + int(misc_add))} -t="{eval_shortname}" -n=N -r=Y -c=0 -o={eval_opere}', file=commandfile_fp)
       #delete temp files
       print(f'del {new_isq_local}',file=commandfile_fp)
-      #print(f'"{SWAP_admin_console_exe}" delete-file {tmp_isq}', file=commandfile_fp)
+      print(f'"{SWAP_admin_console_exe}" delete-file {tmp_isq}', file=commandfile_fp)
       
 else:
    with open(commandfile, "at") as commandfile_fp:
