@@ -23,6 +23,17 @@
 ! Input:
 ! misc1_0: *for the python*
 
-/write "ipl_isq "ipl_fname0
+/isq_to_aim
+  -aim_name                  in
+  -isq_filename              "ipl_isq
+  -pos                       "ipl_voix "ipl_voiy "ipl_voiz
+  -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+
+/toisq_from_aim
+  -aim_name                  in
+  -isq_filename              "ipl_fname0
+  -square_flag               false
+  -original_position         false
+
 
 ..
