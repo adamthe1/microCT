@@ -27,31 +27,21 @@ scanco_uct_import_exe = scanco_uct_import_exe.strip('"')
 
 
 letterList = 'abcdefghijklmnopqrstuvwxyz'
-default_letter_no = 17
-letter_no = default_letter_no
+default_letter = 'R'
 
 eval_isq       = os.environ['EVAL_ISQ']
 eval_dir       = os.environ['EVAL_DIR']
 eval_fname     = os.environ['EVAL_FNAME']
+eval_fname0    = os.environ['EVAL_FNAME0']
 eval_sampno    = os.environ['EVAL_SAMPNO']
 eval_shortname = os.environ['EVAL_SHORTNAME']
 eval_opere     = os.environ['EVAL_OPERE']
 scratch_dir    = os.environ['SYS$SCRATCH']
+misc_add       = os.environ['EVAL_MISC1_0']
 
-#Take default letter R. If an ISQ already starts with R use next letter etc
-while letterList[letter_no] == eval_isq[0].lower():
-   letter_no = letter_no + 1
-   if letter_no == 26:
-      letter_no = 0
-   if letter_no == default_letter_no:
-      with open(commandfile, "at") as commandfile_fp:
-         print(f'ECHO ERROR: NO VALID FIRST LETTER FOUND. EXIT',file=commandfile_fp)
-      exit()
-
-new_isq = letterList[letter_no] + eval_fname[1:] + '.isq'
+new_isq = default_letter + eval_fname[1:] + '.isq'
 new_isq_local = scratch_dir + new_isq
-tmp_isq = eval_dir + eval_fname + '_temp.isq'
-tmp_isq_local = scratch_dir + eval_fname + '_temp.isq'
+tmp_isq = eval_dir + eval_fname + '_R.isq'
 
 #
 # ! Check if misc1_* parameter 'reimport' exists
@@ -76,7 +66,7 @@ if reimport_flag == 1:
       #print(f'rename {tmp_isq_local} {new_isq}',file=commandfile_fp)
       #print(f'ECHO "{SWAP_admin_console_exe}" move-files {tmp_isq} {new_isq}', file=commandfile_fp)
       #print(f'"{SWAP_admin_console_exe}" move-files {tmp_isq} {new_isq}', file=commandfile_fp)
-      print(f'"{scanco_uct_import_exe}" -i={new_isq_local} -s={eval_sampno} -t="{eval_shortname}" -n=N -r=Y -c=0 -o={eval_opere}', file=commandfile_fp)
+      print(f'"{scanco_uct_import_exe}" -i={new_isq_local} -s={str(int(eval_sampno) + int(misc_add))} -t="{eval_shortname}" -n=N -r=Y -c=0 -o={eval_opere}', file=commandfile_fp)
       #delete temp files
       print(f'del {new_isq_local}',file=commandfile_fp)
       #print(f'"{SWAP_admin_console_exe}" delete-file {tmp_isq}', file=commandfile_fp)

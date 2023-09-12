@@ -7,75 +7,22 @@
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! Rotate around Axis  V1.0 !
+!!  !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! created: 19-OCT-2021 SW
+! created: 13-SEP-2023 
 
 ! note:
 
 ! modifications:
 
 
-! Rotate VOI such that 3 points P1,P2 and P3 are finally in the
-! xy, xz or yz plane.
+! Write new isq according to white box
 
 
 ! Input:
-! misc1_0: Rotation axis
-! misc1_1: Rotation angle
-! misc1_2: Interpolation option
-! misc1_3: Reimport option
+! misc1_0: *for the python*
 
-/set_symbol dummy_vec 0
+/write "ipl_isq "ipl_fname0
 
-/calculate3d "ipl_misc1_0 dot "ipl_misc1_0 double lvec2
-/calculate1d "lvec2 ** 0.5 double lvec
-/calculate3d "ipl_misc1_0 / "lvec double vec
-/calculate3d "vec acos "dummy_vec double vec2
-/calculate3d "vec2 * 180.0 double vec3
-/calculate3d "vec3 / 3.14159265358979323846 double vec4
-
-
-
-!
-! extract VOI from ISQ
-!
-
-
-/isq_to_aim
-  -aim_name                  org
-  -isq_filename              "ipl_isq
-  -pos                       "ipl_voix "ipl_voiy "ipl_voiz
-  -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
-
-! Rotate around axis
-/turn3d
-  -input                     org
-  -output                    out
-  -turnaxis_angles           "vec4
-  -turnangle                 "ipl_misc1_1
-  -img_interpol_option       "ipl_misc1_2
-
-/if "ipl_misc1_3 eqs reimport
-
-  /toisq_from_aim
-    -aim_name                  org
-    -isq_filename              "ipl_fname1
-    -square_flag               false
-    -original_position         false
-
-! /toisq_from_aim
-!    -aim_name                  out
-!    -isq_filename              "ipl_isq
-!    -square_flag               false
-!    -original_position         false
-
-/else
-
-  /write
-    -name                      out
-    -filename                  "ipl_fname0
-
-/endif
 ..
