@@ -13,6 +13,7 @@
 
 ! modifications:
 ! 25-JUN-2023: Converted to new computer
+! 09-AUG-2023: Added option for universal start of the trabecular bone
 
 
 ! Trabeculer bone analysis in 2 subregions
@@ -113,6 +114,12 @@
 !/read seg  "ipl_segaim
 !/gobj seg  "ipl_fname0 "ipl_peel0
 /exa  aim_gobj0  geo
+
+!------------------------------- ---------------------!
+! Start the trabecular bone at (misc1_0) from bone    !
+!-----------------------------------------------------!
+
+
 
 !-------------------------------!
 ! Divide the Analysis into 3    !

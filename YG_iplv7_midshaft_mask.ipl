@@ -85,7 +85,7 @@
 !
 
 
-/if 0 eq 1
+/if 0 eq 0
   /isq_to_aim
     -aim_name                  org
     -isq_filename              "ipl_isq

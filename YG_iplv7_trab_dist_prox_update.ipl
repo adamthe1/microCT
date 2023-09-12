@@ -13,7 +13,7 @@
 
 ! modifications:
 ! 25-JUN-2023: Converted to new computer
-! 09-AUG-2023: Added option for universal start of the trabecular bone
+! 09-SEP-2023: Added option for universal start of the trabecular bone
 
 
 ! Trabeculer bone analysis in 2 subregions
@@ -85,9 +85,15 @@
 /write  seg    "ipl_segaim
   -compress_type  bin
 
+!------------------------------- -----------------------------------------------!
+! Check which side of the bone the trabecular is (closer to pos_z = 0 or -1)    !
+!-------------------------------------------------------------------------------!
+
+
 !------------------------------- ---------------------!
 ! Start the trabecular bone at (misc1_0) from bone    !
 !-----------------------------------------------------!
+
 
 ! because of in_out
 /copy seg out 
@@ -107,12 +113,8 @@
   -z_only                    false
   -border                    0 0 0
 
-! get the dimension of full bone for comparison
-/set_symbol_prefix full_
-/exa bone geo
 
-! check where the gobj should start
-/calculate1d "full_dim_z * "ipl_misc1_0 int64 trab_end
+
 
 ! turn the initial gobj into aim for exa
 /gobj_to_aim
@@ -128,36 +130,75 @@
 
 ! the ipl_gobj0 will change according to the trab_end so to make the script work 
 ! even when it runs twice (because the condition is lt) we take 1 off for the condition
-/calculate1d "trab_end - 1 int64 trab_end_cond
+! /calculate1d "trab_end - 1 int64 trab_end_c
 
+! get the dimension of full bone for comparison
+/set_symbol_prefix full_
+/exa bone geo
+
+! get the dimensions of the gobj
 /set_symbol_prefix init_
 /exa aim_gobj geo
 
-! check if the gobj exists where we would like to start it with the misc (if it isnt exit)
-/if "init_pos_z lt "trab_end_cond
 
-  /sub_get          
-  -input                     aim_gobj1
-  -output                    aim_gobj
-  -pos                       "init_pos_x "init_pos_y "trab_end
-  -dim                       -1 -1 -1
-  -global_pos_flag           true  
+! Check which side of the bone the trabecular is: 
+! if start of the gobj is before the 40% then the trabecular is at start of bone else its at end of bone
+/calculate1d "full_dim_z * 0.4 "top_bot_mark
+/if "init_pos_z lt "top_bot_mark 
+
+  /calculate1d 1 - "ipl_misc1_0 int64 ipl_misc1_0
+  /calculate1d "full_dim_z * "ipl_misc1_0 int64 trab_end
+  
+  ! check where the gobj should start
+  ! check if the gobj exists where we would like to start it with the misc (if it isnt exit)
+  /if "init_pos_z lt "trab_end
+    /calculate1d "trab_end - "init_pos_z int64 new_dim_z 
+
+    /sub_get          
+    -input                     aim_gobj1
+    -output                    aim_gobj
+    -pos                       0  0  0
+    -dim                       -1 -1 "new_dim_z
+    -global_pos_flag           false
+
+  /else
+  
+    /set_symbol message "you_didnt_make_the_gobj_long_enough 
+    ..
+
+  /endif
 
 /else
-  
-  /set_symbol message "you_didnt_make_the_gobj_long_enough 
-  ..
 
+  /calculate1d "full_dim_z * "ipl_misc1_0 int64 trab_end
+  
+  ! check where the gobj should start
+  ! check if the gobj exists where we would like to start it with the misc (if it isnt exit)
+  /if "init_pos_z lt "trab_end
+
+    /sub_get          
+    -input                     aim_gobj1
+    -output                    aim_gobj
+    -pos                       "init_pos_x  "init_pos_x  "trab_end
+    -dim                       -1 -1 -1
+    -global_pos_flag           true
+
+  /else
+  
+    /set_symbol message "you_didnt_make_the_gobj_long_enough 
+    ..
+
+  /endif
 /endif
 
 /togobj_from_aim
   -input                     aim_gobj
-  -gobj_filename             "ipl_gobj0
+  -gobj_filename             "ipl_gobj3
   -min_elements              0
   -max_elements              0
   -curvature_smooth          5
 
-! the aim of all
+! the aim of all after the cut
 /write aim_gobj "ipl_fname0 
 
 !-----------------------------------------------!
@@ -223,7 +264,7 @@
 !           REGION 1 = ALL                           !
 !----------------------------------------------------!
 
-/set_symbol ipl_gobj "ipl_gobj0
+/set_symbol ipl_gobj "ipl_gobj3
 /set_symbol voi      1
 
 ! Seems not necessary:
