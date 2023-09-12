@@ -85,15 +85,9 @@
 /write  seg    "ipl_segaim
   -compress_type  bin
 
-!------------------------------- -----------------------------------------------!
-! Check which side of the bone the trabecular is (closer to pos_z = 0 or -1)    !
-!-------------------------------------------------------------------------------!
-
-
 !------------------------------- ---------------------!
 ! Start the trabecular bone at (misc1_0) from bone    !
 !-----------------------------------------------------!
-
 
 ! because of in_out
 /copy seg out 
@@ -112,8 +106,6 @@
   -output                    bone
   -z_only                    false
   -border                    0 0 0
-
-
 
 
 ! turn the initial gobj into aim for exa
@@ -138,20 +130,22 @@
 
 ! get the dimensions of the gobj
 /set_symbol_prefix init_
-/exa aim_gobj geo
-
+/exa aim_gobj1 geo
 
 ! Check which side of the bone the trabecular is: 
 ! if start of the gobj is before the 40% then the trabecular is at start of bone else its at end of bone
-/calculate1d "full_dim_z * 0.4 "top_bot_mark
+/calculate1d "full_dim_z * 0.4 int64 "top_bot_mark
 /if "init_pos_z lt "top_bot_mark 
 
   /calculate1d 1 - "ipl_misc1_0 int64 ipl_misc1_0
-  /calculate1d "full_dim_z * "ipl_misc1_0 int64 trab_end
   
   ! check where the gobj should start
-  ! check if the gobj exists where we would like to start it with the misc (if it isnt exit)
-  /if "init_pos_z lt "trab_end
+  /calculate1d "full_dim_z * "ipl_misc1_0 int64 trab_end
+  
+  ! calculate position of end of gobj
+  /calculate1d "init_pos_z + "init_dim_z int64 init_gobj_end
+  ! if the gobj exists where we would like to start it with the misc (if it isnt exit)
+  /if "init_gobj_end ge "trab_end
     /calculate1d "trab_end - "init_pos_z int64 new_dim_z 
 
     /sub_get          
@@ -170,11 +164,11 @@
 
 /else
 
+  ! check where the gobj should start
   /calculate1d "full_dim_z * "ipl_misc1_0 int64 trab_end
   
-  ! check where the gobj should start
-  ! check if the gobj exists where we would like to start it with the misc (if it isnt exit)
-  /if "init_pos_z lt "trab_end
+  ! if the gobj exists where we would like to start it with the misc (if it isnt exit)
+  /if "init_pos_z le "trab_end
 
     /sub_get          
     -input                     aim_gobj1
