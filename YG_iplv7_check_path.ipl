@@ -13,7 +13,6 @@
 
 ! modifications:
 ! 25-JUN-2023: Converted to new computer
-! 09-AUG-2023: Added option for universal start of the trabecular bone
 
 
 ! Trabeculer bone analysis in 2 subregions
@@ -38,19 +37,19 @@
   -region                    "ipl_region
   -version                   "ipl_version
 
-..
 ! not sure what this will do
 !/calculate1d "ipl_voix - 10 d ipl_voix
 !/calculate1d "ipl_voiy - 10 d ipl_voiy
 !/calculate1d "ipl_voidx + 20 d ipl_voidx
 !/calculate1d "ipl_voidy + 20 d ipl_voidy
 
+
 /isq_to_aim
   -aim_name                  org
   -isq_filename              "ipl_isq
   -pos                       "ipl_voix "ipl_voiy "ipl_voiz
   -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
-
+..
 !
 ! write VOI to disk (as AIM)
 !
@@ -115,12 +114,6 @@
 !/read seg  "ipl_segaim
 !/gobj seg  "ipl_fname0 "ipl_peel0
 /exa  aim_gobj0  geo
-
-!------------------------------- ---------------------!
-! Start the trabecular bone at (misc1_0) from bone    !
-!-----------------------------------------------------!
-
-
 
 !-------------------------------!
 ! Divide the Analysis into 3    !
