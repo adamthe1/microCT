@@ -15,8 +15,6 @@ def does_file_exist_in_hierarchy(virtualpath: str, connection) -> bool:
 
 
 commandfile = sys.argv[1]
-with open('', 'w') as checkfile:
-    checkfile.write(os.path.abspath(commandfile))
 
 uct_list_exe_filename = os.environ['SCANCO_UCT_LIST_EXE']
 uct_list_exe_filename = uct_list_exe_filename.strip('"')
