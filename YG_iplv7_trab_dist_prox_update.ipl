@@ -46,7 +46,7 @@
 
 ! need isq to aim of full bone for analysis forward
 /isq_to_aim
-  -aim_name                  org_full
+  -aim_name                  org
   -isq_filename              "ipl_isq
   -pos                       0  0  0
   -dim                       -1 -1 -1
@@ -61,6 +61,7 @@
   -sigma               "ipl_sigma0
   -support             "ipl_support0
 
+/write org "ipl_aim
 /del org
 
 /thres gau thres
