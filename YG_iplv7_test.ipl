@@ -1,0 +1,34 @@
+!
+!         _/_/_/  _/_/_/    _/
+!          _/    _/    _/  _/           Image Processing Language
+!         _/    _/_/_/    _/
+!        _/    _/        _/             (c) SCANCO Medical AG
+!     _/_/_/  _/        _/_/_/_/
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!  !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! created: 13-SEP-2023 
+
+! note:
+
+! modifications:
+
+
+! Write new isq according to white box
+
+
+! Input:
+! misc1_0: *for the python*
+
+
+/if 2 eqs 2
+  /if 1 eqs 1
+    /set_symbol message 2
+  /endif
+  /set_symbol hello 3
+/endif
+/if "message ge "message
+..
