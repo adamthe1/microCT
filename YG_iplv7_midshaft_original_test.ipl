@@ -58,8 +58,8 @@
 /isq_to_aim
   -aim_name                  org_full
   -isq_filename              "ipl_isq
-  -pos                       "ipl_voix "ipl_voiy "ipl_voiz
-  -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+  -pos                       0 0 1200
+  -dim                       -1 -1 100
 
 ! for test get org of ring
 /sub_get
@@ -67,7 +67,7 @@
   -output                    org
   -pos                        0  0 1239
   -dim                       -1 -1 58
-  -global_pos_flag           false
+  -global_pos_flag           true
 
 !
 ! write voi to disk (as aim)
