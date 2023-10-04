@@ -5,9 +5,10 @@
 !        _/    _/        _/             (c) SCANCO Medical AG
 !     _/_/_/  _/        _/_/_/_/
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! Segmentation of 4 Phases/Objects V1.1 !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Segmentation of TRAB bone based on GOBJ !!
+!! Z dim proportional to bone height       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! note:    This script is adapted from TRAB_DIST_PROX.COM
 
@@ -17,12 +18,9 @@
 
 
 ! Trabeculer bone analysis in 2 subregions
-! This script segments all objects according to a unique
-! threshold. Then 5 objects are separated based on GOBJs
-! The values of the segmented objects can be set.
 
 ! Input:
-! Trabeculer bone isq
+! ISQ and GOBJ (at least 300 slices)
 
 !!! Add +10 to x and y dims !!!!
 
