@@ -442,6 +442,7 @@
 
 ! do vox_gobj on ring for calculations at the end
 
+/gobj ring "ipl_gobj1 "ipl_peel1
 /voxgobj_scanco_param
   -input                     ring
   -gobj_filename             "ipl_gobj1
