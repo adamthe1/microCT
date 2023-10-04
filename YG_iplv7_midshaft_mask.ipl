@@ -338,11 +338,11 @@
   -erode_distance            "ero_val
   -use_previous_margin       false
 
-/concat ring_ero ring ring_filled
+/concat ring_ero ring ring_erodil
   -common_region_only        false
   -add_not_overlay           false
 
-/togobj_from_aim ring_filled "ipl_gobj1
+/togobj_from_aim ring_erodil "ipl_gobj1
   -curvature_smooth          5
 
 /write ring "ipl_segaim  
@@ -364,7 +364,7 @@
 !
 
 /set_symbol_prefix full_
-/copy seg_lo full 
+/copy seg_hi full 
 
 /exa full geo
 
@@ -415,7 +415,7 @@
 /set_symbol_prefix dto_
 
 /dt_object
-  -input                     ring_filled
+  -input                     ring_erodil
   -output                    out
   -gobj_filename             none
   -peel_iter                 -1
@@ -463,12 +463,12 @@
 
 !
 ! Ct.th
-! ring_filled
+! ring_erodil
 
 /set_symbol_prefix cort_
 
 /dt_object
-  -input                     ring_filled
+  -input                     ring_erodil
   -output                    cort_th
   -gobj_filename             none
   -peel_iter                 -1
@@ -482,7 +482,7 @@
 /del cort_th
 
 ! calculate orientation with regard to z-axis
-/tri ring_filled tri
+/tri ring_erodil tri
   -gobj_filename             none
   -peel_iter                 -1
   -ip_sigma                  0.000000
@@ -528,7 +528,7 @@
 !
 /subtract_aims
   -input1                    perio_ring
-  -input2                    ring_filled
+  -input2                    ring_erodil
   -output                    endo_ring
 
 /del perio_ring
@@ -553,7 +553,7 @@
   -gobj_filename             "ipl_gobj4
   -fileout_or_screen         "ipl_fname6
 
-/del endo_mask
+/del endo_ring
 
 !
 ! Porosity
