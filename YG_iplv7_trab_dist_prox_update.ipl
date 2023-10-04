@@ -57,11 +57,19 @@
   -suppos_pixels_local       -1 -1 -1
   -subdim_pixels             -1 -1 -1
 
+/sub_get          
+-input                     org
+-output                    org_seg
+-pos                       "ipl_voix "ipl_voiy "ipl_voiz
+-dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+-global_pos_flag           true
+
 /gauss_lp org gau
   -sigma               "ipl_sigma0
   -support             "ipl_support0
 
-/write org "ipl_aim
+/write org_seg "ipl_aim
+/del org_seg
 /del org
 
 /thres gau thres
@@ -112,6 +120,8 @@
   -z_only                    false
   -border                    0 0 0
 
+/del full_aim
+/del out
 
 ! turn the initial gobj into aim for exa
 /gobj_to_aim
@@ -124,6 +134,8 @@
   -output                    aim_gobj1
   -z_only                    false
   -border                    0 0 0
+
+/del aim_gobj0
 
 ! the ipl_gobj0 will change according to the trab_end so to make the script work 
 ! even when it runs twice (because the condition is lt) we take 1 off for the condition
@@ -140,13 +152,19 @@
 ! Check which side of the bone the trabecular is: 
 ! if start of the gobj is before the 40% then the trabecular is at start of bone else its at end of bone
 /calculate1d "full_dim_z * 0.4 int64 top_bot_mark
+
+! this is because if commands run no matter what but they add a false statement if the previous if is false
+/set_symbol init_gobj_end 1
+/set_symbol trab_end 1
 /if "init_pos_z lt "top_bot_mark 
 
   /calculate1d 1 - "ipl_misc1_0 int64 ipl_misc1_0
   
-  ! check where the gobj should start
-  /calculate1d "full_dim_z * "ipl_misc1_0 int64 trab_end
-  
+  ! check where the gobj should start (gives out local position of trab_end in relation to the bone)
+  /calculate1d "full_dim_z * "ipl_misc1_0 int64 local_trab_end
+  ! get the global position
+  /calculate1d "local_trab_end + "full_pos_z int64 trab_end
+
   ! calculate position of end of gobj
   /calculate1d "init_pos_z + "init_dim_z int64 init_gobj_end
   ! if the gobj exists where we would like to start it with the misc (if it isnt exit)
@@ -160,19 +178,19 @@
     -dim                       -1 -1 "new_dim_z
     -global_pos_flag           false
 
-  /else
-  
-    /set_symbol message "you_didnt_make_the_gobj_long_enough 
-    ..
+    /set_symbol message_you_didnt_make_the_gobj_long_enough 2 
 
   /endif
 
 /else
 
-  ! check where the gobj should start
-  /calculate1d "full_dim_z * "ipl_misc1_0 int64 trab_end
+  ! check where the gobj should start (gives out local position of trab_end in relation to the bone)
+  /calculate1d "full_dim_z * "ipl_misc1_0 int64 local_trab_end
+  ! get the global position
+  /calculate1d "local_trab_end + "full_pos_z int64 trab_end
   
   ! if the gobj exists where we would like to start it with the misc (if it isnt exit)
+  ! init_pos_z is end of gobj in this scenario
   /if "init_pos_z le "trab_end
 
     /sub_get          
@@ -182,12 +200,13 @@
     -dim                       -1 -1 -1
     -global_pos_flag           true
 
-  /else
+    /set_symbol message_you_didnt_make_the_gobj_long_enough 2 
   
-    /set_symbol message "you_didnt_make_the_gobj_long_enough 
-    ..
-
   /endif
+  
+/endif
+
+/if "message_you_didnt_make_the_gobj_long_enough ge "message_you_didnt_make_the_gobj_long_enough 
 /endif
 
 /togobj_from_aim
@@ -226,7 +245,7 @@
 ! Prox Mask
 
 /sub_get          
-  -input                     aim_gobj0
+  -input                     aim_gobj
   -output                    aim_gobjp
   -pos                       0 0 0
   -dim                       -1 -1 "mid_slice
@@ -242,7 +261,7 @@
 ! Dist Mask
 
 /sub_get               
-  -input                     aim_gobj0
+  -input                     aim_gobj
   -output                    aim_gobjd
   -pos                       0 0 "mid_slice
   -dim                       -1 -1 -1
@@ -254,7 +273,7 @@
   -min_elements              0
   -max_elements              0
   -curvature_smooth          5     
-
+..
 !---------------------------------------------!
 !           MORPHOMETRIC ANALYSES             !
 !---------------------------------------------!
