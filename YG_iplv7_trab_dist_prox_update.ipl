@@ -84,7 +84,7 @@
 -input                     full_aim
 -output                    seg
 -pos                       "ipl_voix "ipl_voiy "ipl_voiz
--dim                       "ipl_voidx "ipl_voidy "ipl_void
+-dim                       "ipl_voidx "ipl_voidy "ipl_voidz
 -global_pos_flag           true
 
 /write  seg    "ipl_segaim
@@ -95,7 +95,7 @@
 !-----------------------------------------------------!
 
 ! because of in_out
-/copy full_bone out 
+/copy full_aim out 
 
 !get only the bone itself with cl + bb
 /cl_ow_rank_extract

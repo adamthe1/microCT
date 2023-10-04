@@ -1,0 +1,559 @@
+!
+!         _/_/_/  _/_/_/    _/
+!          _/    _/    _/  _/           Image Processing Language
+!         _/    _/_/_/    _/
+!        _/    _/        _/             (c) SCANCO Medical AG
+!     _/_/_/  _/        _/_/_/_/
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Midshaft analysis V1.0.1    !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! created: 08-OCT-2021 SW
+
+! note: This script is adapted from BO-003 Cortical Bone Analysis.
+!       It can be used for cortical bone of the midshaft portion
+!       where no trabecular bone is present.
+!       This script does not need any contours.
+
+! modifications:
+!
+! 18-JAN-2022     BV/TV in % (times 100).
+!                 Po.Dn and Ct.Po bug fix. Norm by Ct.V. sw
+! 13-JUN-2022     Component labeling after segmentation in order to remove
+!                 small particles/fragments in the bone marrow
+
+
+!  Cortical bone analysis according to
+!  Bouxsein, Mary L et al. Guidelines for assessment of bone microstructure
+!  in rodents using micro-computed tomography.
+!  Journal of bone and mineral research : the official journal of the
+!  American Society for Bone and Mineral Research vol. 25,7 (2010):
+!  1468-86. doi:10.1002/jbmr.141
+
+
+! Input:
+! Segmentation parameters
+! misc1_0: Cortical close distance
+! misc1_1: Gobj peel
+
+
+/db_scanco_activate
+  -write                     true
+  -type                      2
+
+/db_e3_clear_eval
+  -type                      e44
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+
+!
+! extract voi from isq
+!
+
+/isq_to_aim
+  -aim_name                  org_full
+  -isq_filename              "ipl_isq
+  -pos                       "ipl_voix "ipl_voiy "ipl_voiz
+  -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+
+! for test get org of ring
+/sub_get
+  -input                     org_full
+  -output                    org
+  -pos                        0  0 1239
+  -dim                       -1 -1 58
+  -global_pos_flag           false
+
+!
+! write voi to disk (as aim)
+!
+
+/write  org    "ipl_aim
+
+!
+! segmentation
+!
+
+/sup org
+  -supdim_numbers            4 4 1
+  -testoff_pixels            "ipl_support0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/seg_gauss org seg
+  -sigma                     "ipl_sigma0
+  -support                   "ipl_support0
+  -low                       "ipl_lower0
+  -upp                       "ipl_upper0
+  -unit                      "ipl_unit0
+  -value                     127
+  
+!remove small particles
+/cl_ow_rank_extract
+  -input_output              seg
+  -first_rank                1
+  -last_rank                 1
+  -connect_boundary          false
+  -value_in_range            127
+  -topology                  6
+
+!
+! create gobj first
+!
+
+/close
+  -input                     seg
+  -output                    seg_cl
+  -close_distance            "ipl_misc1_0
+  -continuous_at_boundary    0 0 0
+  -metric                    101
+
+!periosteal envelope
+/fill_holes
+  -input                     seg_cl
+  -output                    perio_mask
+  -border                    1 1 0
+  -topology                  6
+
+/subtract_aims
+  -input1                    perio_mask
+  -input2                    seg_cl
+  -output                    endo_mask
+
+/cl_ow_rank_extract
+  -input_output              endo_mask
+  -first_rank                1
+  -last_rank                 1
+  -connect_boundary          false
+  -value_in_range            127
+  -topology                  6
+
+/subtract_aims
+  -input1                    perio_mask
+  -input2                    endo_mask
+  -output                    cort_mask
+
+/togobj_from_aim
+  -input                     cort_mask
+  -gobj_filename             "ipl_fname15
+  -min_elements              0
+  -max_elements              0
+  -curvature_smooth          5
+
+!
+! end create gobj
+!
+
+/gobj
+  -input_output              seg
+  -gobj_filename             "ipl_fname15
+  -peel_iter                 "ipl_misc1_1
+
+/write  seg    "ipl_segaim
+
+!get rid of support
+/read seg "ipl_segaim
+
+
+!
+! ct.v by vox
+!
+
+/set_symbol_prefix seg_
+
+/voxgobj_scanco_param
+  -input                     seg
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -region_number             0
+
+/exa seg geo
+
+/vox_scanco_param
+  -input                     seg
+
+
+!
+! BMD
+!
+
+/set_symbol_prefix mean1_
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_fname15
+  -peel_iter                 "ipl_misc1_1
+  -region_number             0
+
+
+!
+! TMD
+!
+
+/set_symbol_prefix mean2_
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_segaim
+  -peel_iter                 2
+  -region_number             1
+
+/del org
+
+!dt object here because of db_set_mean_accuray
+/set_symbol_prefix dto_
+
+/dt_object
+  -input                     seg
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       screen
+
+/del out
+
+!check mean accuracy for e3
+/calculate1d "seg_vox_elsize_x_mm * 6 d ref_value
+
+/if "dto_th_mean lt "ref_value
+
+  /set_symbol org2_vox_mu_flag 3
+
+/endif
+
+
+!
+! MOI
+!
+
+/set_symbol_prefix seg_
+
+/moment2d_of_inertia
+  -input                     seg
+  -fileout_or_screentab      "ipl_fname0
+  -turnangle_cw              0.000000
+
+
+!
+! Cortical mask
+!
+
+/gobj_to_aim
+  -gobj_filename             "ipl_fname15
+  -output                    cort_mask_full
+  -peel_iter                 "ipl_misc1_1
+
+!reduce gobj dim to seg
+/match_cut
+  -input1                    cort_mask_full
+  -input2                    seg
+  -output1                   cort_mask
+  -output2                   dummy
+
+/del dummy
+
+/del cort_mask_full
+
+/write cort_mask             "ipl_fname3
+
+
+!
+! Ct.th
+!
+
+/set_symbol_prefix cort_
+
+/dt_object
+  -input                     cort_mask
+  -output                    cort_th
+  -gobj_filename             none
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname2
+
+/write cort_th           "ipl_fname1
+
+/del cort_th
+
+! calculate orientation with regard to z-axis
+/tri cort_mask tri
+  -gobj_filename             none
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+
+!
+! Periosteal perimeter & tt.ar
+!
+
+!
+! create periosteal _ps.gobj
+!
+
+/fill_holes
+  -input                     cort_mask
+  -output                    peri_mask
+  -border                    1 1 0
+  -topology                  6
+
+/togobj_from_aim
+  -input                     peri_mask
+  -gobj_filename             "ipl_fname11
+  -min_elements              0
+  -max_elements              0
+  -curvature_smooth          1
+
+/set_symbol_prefix outer_
+
+/voxgobj_scanco_param
+  -input                     peri_mask
+  -gobj_filename             "ipl_fname11
+  -peel_iter                 0
+  -region_number             0
+
+/gobj_circumf_area
+  -gobj_filename             "ipl_fname11
+  -fileout_or_screen         "ipl_fname5
+
+/write peri_mask             "ipl_fname4
+
+
+!
+! Endosteal perimeter & medullary area ma.ar
+!
+
+/subtract_aims
+  -input1                    peri_mask
+  -input2                    cort_mask
+  -output                    endo_mask
+
+/del peri_mask
+
+/del cort_mask
+
+/togobj_from_aim
+  -input                     endo_mask
+  -gobj_filename             "ipl_fname12
+  -min_elements              0
+  -max_elements              0
+  -curvature_smooth          1
+
+/set_symbol_prefix inner_
+
+
+/voxgobj_scanco_param
+  -input                     endo_mask
+  -gobj_filename             "ipl_fname12
+  -peel_iter                 0
+  -region_number             0
+
+!
+! endocortical perimeter (ec.pm)
+!
+
+/gobj_circumf_area
+  -gobj_filename             "ipl_fname12
+  -fileout_or_screen         "ipl_fname7
+
+/write endo_mask "ipl_fname6
+
+/del endo_mask
+
+
+!
+! Porosity
+!
+
+/read seg "ipl_segaim
+
+/invert_ow
+  -in_out                    seg
+  -gobj_filename             "ipl_fname15
+  -peel_iter                 -1
+
+/write seg "ipl_fname8
+
+
+!
+! po.n, po.v.sd
+!
+
+/ren seg pores
+
+/set_symbol_prefix po_
+
+/voxgobj_scanco_param
+  -input                     pores
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -region_number             0
+
+!get pore number etc
+/cl_image
+  -input                     pores
+  -output                    cl
+  -histofile_or_screentab    "ipl_fname9
+  -topology                  6
+  -type_out                  char
+
+/del cl
+
+!prore thickness
+/dt_object_param
+  -input                     pores
+  -output                    pores_thickness
+  -gobj_filename             none
+  -peel_iter                 0
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -version2                  true
+  -histofile_or_screen       "ipl_fname14
+
+/write
+  -name                      pores_thickness
+  -filename                  "ipl_fname13
+
+/del pores_thickness
+
+!pores solid in transparent cortex, for control
+/read seg "ipl_segaim
+
+/transparent_concat
+  -input_solid               pores
+  -input_transp              seg
+  -output                    trans
+
+/write trans "ipl_fname10
+
+
+
+
+/calculate1d "seg_elsize_z_mm * "seg_dim_z double seg_dimz_mm
+/calculate1d "seg_vox_tot_volume /  "seg_dimz_mm double ctar
+/calculate1d "outer_vox_obj_volume /  "seg_dimz_mm double ttar
+/calculate1d "ctar /  "ttar double ctar_ov_ttar
+/calculate1d "inner_vox_obj_volume /  "seg_dimz_mm double maar
+/calculate1d "po_vox_obj_volume / "po_cl_components double avgpov
+/calculate1d "po_cl_components / "seg_vox_tot_volume double po_dens
+/calculate1d "po_vox_obj_volume / "seg_vox_tot_volume double ctpo
+/calculate1d "ctpo * 100 double ctpo
+/calculate1d "ctar_ov_ttar * 100 double ct_area_frac
+
+!check if vectors point in same direction
+/if "cort_tri_h2_z lt 1
+  /calculate3d
+    -vec1                      0 0 -1
+    -symbol_name               unit_vec
+/else
+  /calculate3d
+    -vec1                      0 0 1
+    -symbol_name               unit_vec
+/endif
+
+/calculate3d
+  -vec1                      "cort_tri_h2_x "cort_tri_h2_y "cort_tri_h2_z
+  -operator                  angle
+  -vec2                      "unit_vec
+  -out_type                  double
+  -symbol_name               cort_angle_rad
+
+/calculate1d "cort_angle_rad * 180 double cort_angle_rad
+/calculate1d "cort_angle_rad / 3.14159265358979 double cort_angle_deg
+/calculate1d "seg_vox_ov_tv * 100 double seg_vox_ov_tv
+
+/set_symbol cort_angle_deg_flag 1
+
+!approximate flag if angle > 5
+/if "cort_angle_deg gt 5
+
+  /set_symbol cort_angle_deg_flag 3
+
+/endif
+
+/db_e3_write_064
+  -type                      e44
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "seg_elsize_x_mm
+  -val001                    "seg_elsize_y_mm
+  -val002                    "seg_elsize_z_mm
+  -val003                    "seg_dim_x
+  -val004                    "seg_dim_y
+  -val005                    "seg_dim_z
+  -val006                    "seg_pos_x
+  -val007                    "seg_pos_y
+  -val008                    "seg_pos_z
+  -val009                    "seg_sigma
+  -val010                    "seg_support
+  -val011                    "seg_unit_code
+  -val012                    "seg_lower_th
+  -val013                    "seg_native_lower_th
+  -val014                    "seg_upper_th
+  -val015                    "seg_native_upper_th
+  -val016                    "seg_vox_tot_volume      ! do on full
+  -val017                    "seg_vox_obj_volume      !full
+  -val018                    "seg_vox_ov_tv           !full
+  -val019                    "mean2_vox_mu_mean       ! mean2 on ring with mask
+  -val020                    "mean2_vox_mu_sd
+  -val021                    "mean2_vox_mu_flag
+  -val022                    "mean1_vox_mu_mean       ! mean1 on full without mask
+  -val023                    "mean1_vox_mu_sd
+  -val024                    "mean1_vox_mu_flag
+  -val025                    "ttar
+  -val026                    "ctar
+  -val027                    "ct_area_frac
+  -val028                    "maar
+  -val029                    "seg_moi_cmx
+  -val030                    "seg_moi_cmy
+  -val031                    "seg_moi_ixx
+  -val032                    "seg_moi_iyy
+  -val033                    "seg_moi_ixy
+  -val034                    "seg_moi_pmoi
+  -val035                    "seg_moi_ixx_cy
+  -val036                    "seg_moi_iyy_cx
+  -val037                    "seg_moi_imax
+  -val038                    "seg_moi_imin
+  -val039                    "seg_moi_angle
+  -val040                    "seg_moi_imax_cmax
+  -val041                    "seg_moi_imin_cmin
+  -val042                    "cort_th_mean
+  -val043                    "cort_th_sd
+  -val044                    "cort_th_flag
+  -val045                    "outer_gobj_circum_mean
+  -val046                    "inner_gobj_circum_mean
+  -val047                    "po_cl_components
+  -val048                    "po_vox_obj_volume
+  -val049                    "po_cl_vol_sd
+  -val050                    "avgpov
+  -val051                    "po_dens
+  -val052                    "po_th_mean
+  -val053                    "po_th_sd
+  -val054                    "po_th_flag
+  -val055                    "ctpo
+  -val056                    "cort_angle_deg
+  -val057                    "cort_angle_deg_flag
+..
