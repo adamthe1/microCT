@@ -84,7 +84,6 @@
 ! extract voi from isq
 !
 
-
 /if 0 eq 0
   /isq_to_aim
     -aim_name                  org
@@ -185,7 +184,7 @@
 /togobj_from_aim box  "ipl_fname13
   -curvature_smooth           5
 /del box 
-/gobj org "ipl_gobj2
+/gobj org "ipl_fname13
 /bound org org_bb
 /write org_bb "ipl_aim
 /del org
@@ -231,6 +230,10 @@
 
 !----- Masking of entire bone (will be used for Ca.Th) -----
 ! scale down by "ipl_misc1_3 to save computing time on erosion dilation 
+
+/set_symbol do_dilero_seghi 1
+
+/if 1 eq "do_dilero_seghi
 
 /scale_elsize  
   -input                     seg_hi
@@ -279,10 +282,17 @@
 
 /del ero_rescale
 
-/togobj_from_aim mask "ipl_fname12
+/togobj_from_aim seg_hi "ipl_gobj0
   -curvature_smooth          5
 
 /write mask "ipl_fname1
+
+/else 
+
+/togobj_from_aim seg_hi "ipl_gobj0
+  -curvature_smooth          5
+
+/endif
 
 ! The ring
 ! "ipl_misc1_0 (0-100)) (%) (default 50) ->  ring start in relation to the bone
@@ -302,7 +312,7 @@
 /endif
 
 /set_symbol_prefix calc_
-/exa mask geo
+/exa seg_hi geo
 
 /calculate1d "calc_dim_z * "ring_start int64 ring_pos_z
 /calculate1d "ring_dim_mm / "calc_elsize_z_mm int64 ring_dim_z 
@@ -315,12 +325,21 @@
   -dim                       -1 -1 "ring_dim_z
   -global_pos_flag           false
 
+/if 1 eq "do_dilero_seghi
+  ! create a perio_ring for analysis and gobj
+  /concat ring mask perio_ring
+    -common_region_only        true
+    -add_not_overlay           false
 
-! create a perio_ring for analysis and gobj
-/concat ring mask perio_ring
-  -common_region_only        true
-  -add_not_overlay           false
+/else
 
+  /fill_holes
+  -input                     ring
+  -output                    perio_ring
+  -border                    1 1 0
+  -topology                  6
+
+/endif
 
 ! ring_filled (no holes) with dil/ero strat (double the downscaled misc1_2 distance) 
 /calculate1d "ipl_misc1_2 * 2 int64 dil_val
@@ -345,6 +364,12 @@
 /togobj_from_aim ring_erodil "ipl_gobj1
   -curvature_smooth          5
 
+! endo ring
+/subtract_aims
+  -input1                    perio_ring
+  -input2                    ring_erodil
+  -output                    endo_ring
+
 /write ring "ipl_segaim  
 
 !-----------------------------------!
@@ -366,7 +391,6 @@
 /set_symbol_prefix full_
 /copy seg_hi full 
 
-/exa full geo
 
 /voxgobj_scanco_param
   -input                     full
@@ -374,6 +398,7 @@
   -peel_iter                 -1
   -region_number             0
 
+/exa full geo
 
 /vox_scanco_param
   -input                     full
@@ -401,13 +426,16 @@
 
 /set_symbol_prefix mean_ring_
 
+/copy org org_ring
+/gobj org_ring "ipl_gobj1
+
 /voxgobj_scanco_param
-  -input                     org
+  -input                     org_ring
   -gobj_filename             "ipl_gobj1
   -peel_iter                 2
   -region_number             1
 
-/del org
+/del org_ring
 
 
 ! dt object here because of db_set_mean_accuray
@@ -442,7 +470,6 @@
 
 ! do vox_gobj on ring for calculations at the end
 
-/gobj ring "ipl_gobj1 "ipl_peel1
 /voxgobj_scanco_param
   -input                     ring
   -gobj_filename             "ipl_gobj1
@@ -499,7 +526,7 @@
 
 !
 ! Periosteal perimeter & tt.ar
-!
+!/del perio_ring
 
 ! create a gobj from the perio - smoothed for a good circumf
 /togobj_from_aim
@@ -521,17 +548,13 @@
   -gobj_filename             "ipl_gobj3
   -fileout_or_screen         "ipl_fname5
 
+/del perio_ring
+
 !
 ! Endosteal perimeter & medullary area ma.ar
 !
 
-!
-/subtract_aims
-  -input1                    perio_ring
-  -input2                    ring_erodil
-  -output                    endo_ring
 
-/del perio_ring
 
 ! same for endo ring
 /togobj_from_aim
