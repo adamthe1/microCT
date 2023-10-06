@@ -46,6 +46,9 @@
 ! ipl_fname9: dt_object on pores output file
 ! ipl_fname10: dt_object on pores histofile
 ! ipl_fname11: transparent concat aim file
+! ipl_fname12: full gobj (if gobj0 doesnt work)
+! ipl_fname13: extra gobj for the org box algo
+! ipl_fname14: full aim of seg_hi
 !
 ! ipl_gobj0: Gobj of mask we created with seg_hi
 ! ipl_gobj1: gobj we create of ring_filled
@@ -640,14 +643,14 @@
   -output                    trans
 
 /write trans "ipl_fname11
-
+ipl_fname9
 !
 ! More evals
 !
 
 /calculate1d "ring_elsize_z_mm * "ring_dim_z double ring_dimz_mm
-/calculate1d "ring_vox_tot_volume /  "ring_dimz_mm double ttar
-/calculate1d "outer_vox_obj_volume /  "ring_dimz_mm double ctar
+/calculate1d "ring_vox_tot_volume /  "ring_dimz_mm double ctar
+/calculate1d "outer_vox_obj_volume /  "ring_dimz_mm double ttar
 /calculate1d "ctar /  "ttar double ctar_ov_ttar
 /calculate1d "inner_vox_obj_volume /  "ring_dimz_mm double maar
 /calculate1d "po_vox_obj_volume / "po_cl_components double avgpov
