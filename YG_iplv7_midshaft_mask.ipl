@@ -87,7 +87,7 @@
 ! extract voi from isq
 !
 
-/if 0 eq 0
+/if 0 eq 1
   /isq_to_aim
     -aim_name                  org
     -isq_filename              "ipl_isq
