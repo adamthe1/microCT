@@ -360,9 +360,16 @@
   -erode_distance            "ero_val
   -use_previous_margin       false
 
-/concat ring_ero ring ring_erodil
+/concat ring_ero ring ring_erodil1
   -common_region_only        false
   -add_not_overlay           false
+
+/bounding_box_cut ring_erodil1 ring_erodil
+  -z_only false
+  -border  1 1 1  
+
+/exa ring_erodil geo
+/write ring_erodil "ipl_fname12
 
 /togobj_from_aim ring_erodil "ipl_gobj1
   -curvature_smooth          5
