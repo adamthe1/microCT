@@ -46,7 +46,7 @@
 ! ipl_fname9: dt_object on pores output file
 ! ipl_fname10: dt_object on pores histofile
 ! ipl_fname11: transparent concat aim file
-! ipl_fname12: full gobj (if gobj0 doesnt work)
+! ipl_fname12: ring after erosion dilation (aim)
 ! ipl_fname13: extra gobj for the org box algo
 ! ipl_fname14: full aim of seg_hi
 !
@@ -87,7 +87,7 @@
 ! extract voi from isq
 !
 
-/if 0 eq 1
+/if 0 eq 0
   /isq_to_aim
     -aim_name                  org
     -isq_filename              "ipl_isq
@@ -148,7 +148,7 @@
   -z_only  false
   -border  0  
 
-/del seg_lo
+/del seg_lo_bef
 
 /cl_nr_extract
   -input                     seg_lo2
@@ -176,6 +176,8 @@
 /bounding_box_cut seg_lo_bef seg_lo
   -z_only  false
   -border  0 
+
+/del seg_lo_bef
 
 /endif
 
@@ -332,6 +334,8 @@
   -z_only false
   -border  1 1 1  
 
+/del ring1
+
 /if 1 eq "do_dilero_seghi
   ! create a perio_ring for analysis and gobj
   /concat ring mask perio_ring
@@ -364,19 +368,20 @@
   -erode_distance            "ero_val
   -use_previous_margin       false
 
-/concat ring_ero ring ring_erodil1
+/concat ring_ero ring ring_erodil_1
   -common_region_only        true
   -add_not_overlay           false
 
-/bounding_box_cut ring_erodil1 ring_erodil
+/bounding_box_cut ring_erodil_1 ring_erodil
   -z_only false
   -border  1 1 1  
 
+/del ring_erodil_1
+/del ring_ero
+/del ring_dil
+
 /exa ring_erodil geo
 /write ring_erodil "ipl_fname12
-
-/togobj_from_aim ring_erodil "ipl_gobj1
-  -curvature_smooth          5
 
 ! endo ring
 /subtract_aims
@@ -384,7 +389,35 @@
   -input2                    ring_erodil
   -output                    endo_ring
 
+/cl_ow_rank_extract
+  -input_output              endo_ring
+  -first_rank                1
+  -last_rank                 1
+  -connect_boundary          false
+  -value_in_range            127
+  -topology                  6
+
+/subtract_aims
+  -input1                    perio_ring
+  -input2                    endo_ring
+  -output                    cort_mask
+
+/togobj_from_aim
+  -input                     cort_mask
+  -gobj_filename             "ipl_gobj1
+  -min_elements              0
+  -max_elements              0
+  -curvature_smooth          5
+
+/gobj
+  -input_output              ring
+  -gobj_filename             "ipl_gobj1
+  -peel_iter                 0
+
 /write ring "ipl_segaim  
+
+! get rid of support
+/read ring "ipl_segaim
 
 !-----------------------------------!
 !    Morphometric Analysis - Full   !
@@ -403,7 +436,7 @@
 !
 
 /set_symbol_prefix full_
-/copy seg_hi full 
+/rename seg_lo full 
 
 
 /voxgobj_scanco_param
@@ -440,17 +473,13 @@
 
 /set_symbol_prefix mean_ring_
 
-/copy org org_ring
-/gobj org_ring "ipl_gobj1
-
 /voxgobj_scanco_param
-  -input                     org_ring
-  -gobj_filename             "ipl_gobj1
+  -input                     org
+  -gobj_filename             "ipl_segaim
   -peel_iter                 2
   -region_number             1
 
-/del org_ring
-
+/del org
 
 ! dt object here because of db_set_mean_accuray
 
@@ -543,7 +572,7 @@
 
 !
 ! Periosteal perimeter & tt.ar
-!/del perio_ring
+!
 
 ! create a gobj from the perio - smoothed for a good circumf
 /togobj_from_aim
@@ -599,6 +628,7 @@
 ! Porosity
 ! 
 
+/read ring "ipl_segaim
 /copy ring ring_pores
 
 /invert_ow
@@ -693,8 +723,6 @@
 
 /calculate1d "cort_angle_rad * 180 double cort_angle_rad
 /calculate1d "cort_angle_rad / 3.14159265358979 double cort_angle_deg
-
-! do voxgobj scanco param on ring TODO
 /calculate1d "ring_vox_ov_tv * 100 double ring_vox_ov_tv
 
 /set_symbol cort_angle_deg_flag 1
