@@ -323,10 +323,14 @@
 ! get aim of midshaft ring from seg_hi
 /sub_get
   -input                     seg_hi
-  -output                    ring
+  -output                    ring1
   -pos                        0  0 "ring_pos_z
   -dim                       -1 -1 "ring_dim_z
   -global_pos_flag           false
+
+/bounding_box_cut ring1 ring
+  -z_only false
+  -border  1 1 1  
 
 /if 1 eq "do_dilero_seghi
   ! create a perio_ring for analysis and gobj
@@ -361,7 +365,7 @@
   -use_previous_margin       false
 
 /concat ring_ero ring ring_erodil1
-  -common_region_only        false
+  -common_region_only        true
   -add_not_overlay           false
 
 /bounding_box_cut ring_erodil1 ring_erodil
@@ -483,11 +487,14 @@
 /voxgobj_scanco_param
   -input                     ring
   -gobj_filename             "ipl_gobj1
-  -peel_iter                 "ipl_peel1
+  -peel_iter                 -1
   -region_number             0
 
+/copy ring ring_vox
+/gobj ring_vox "ipl_gobj1
+
 /vox_scanco_param
-  -input                     ring
+  -input                     ring_vox
 
 !
 ! MOI
@@ -650,7 +657,7 @@
   -output                    trans
 
 /write trans "ipl_fname11
-ipl_fname9
+
 !
 ! More evals
 !
@@ -738,7 +745,7 @@ ipl_fname9
   -val026                    "ctar 
   -val027                    "ct_area_frac 
   -val028                    "maar 
-  -val029                    "ring_moi_cmx 
+  -val029                    "ring_moi_cmx
   -val030                    "ring_moi_cmy 
   -val031                    "ring_moi_ixx 
   -val032                    "ring_moi_iyy 
