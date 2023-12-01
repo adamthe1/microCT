@@ -1,0 +1,40 @@
+$!	UCT_EVALUATION_V6_REIMPORT
+$!
+$! Revision History:
+$! V1.0 04-JAN-2007 Implementation Andres Laib
+$!
+$!---------------------------------------------------------------------
+$!
+$ OUTFILE = P1
+$!
+$! eval_fname1 must contain first letter of new isq
+$! otherwise R is taken for compatability with first script version
+$!
+$ IF F$TYPE(EVAL_FNAME1) .EQS. "" THEN EVAL_FNAME1 = "R"
+$ IF EVAL_FNAME1 .EQS. "" THEN EVAL_FNAME1 = "R"
+$ IF F$EXTRACT(0,1,F$PARSE(EVAL_ISQ,,,"NAME")) .EQS. EVAL_FNAME1 
+$ THEN
+$   write sys$output "ERROR: New start letter of ISQ and old letter the same."
+$   write sys$output "Change Script to use other start letter. Exit."
+$   exit
+$ ENDIF
+$! SHOW SYMBOL EVAL_FNAME1
+$ NEW_ISQ     = EVAL_DIR+EVAL_FNAME1+F$STRING(F$EXTRACT(1,7,EVAL_FNAME))+".ISQ"
+$ 
+$!
+$ WRITE OUTFILE "$!"
+$ WRITE OUTFILE "$! Starting Re-Import of the reformatted ISQ"
+$ WRITE OUTFILE "$!"
+$ WRITE OUTFILE "$ RENAME/LOG ''EVAL_FNAME0' ''NEW_ISQ'"
+$! for version import 1.2
+$ WRITE OUTFILE "$ DEFINE/USER UCT_XRAY_LOGFILE SYS$SCRATCH:TEMP.TMP"
+$ WRITE OUTFILE "$ RUN UM:UCT_IMPORT.EXE"
+$ WRITE OUTFILE "''NEW_ISQ'"
+$ WRITE OUTFILE "''EVAL_SAMPNO'"
+$ WRITE OUTFILE "N" ! change name in header
+$ WRITE OUTFILE "0" ! oper
+$ WRITE OUTFILE "0" ! ctrlfile
+$ WRITE OUTFILE "Y" ! rename file
+$
+$!
+$ EXIT

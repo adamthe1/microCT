@@ -24,11 +24,65 @@
 ! misc1_0: *for the python*
 
 
-/if 2 eqs 2
-  /if 1 eqs 1
-    /set_symbol message 2
-  /endif
-  /set_symbol hello 3
-/endif
-/if "message ge "message
+!
+! Porosity
+! 
+
+/read ring_pores "ipl_segaim
+/gobj ring_pores "ipl_fname1
+! Otherwise the BM will be considered as porosity...
+/copy ring_pores ring 
+
+/invert_ow
+  -in_out                    ring_pores
+  -gobj_filename             "ipl_fname1
+  -peel_iter                 -1
+
+!
+! po.n, po.v.sd
+!
+
+/set_symbol_prefix po_
+
+/voxgobj_scanco_param
+  -input                     ring_pores
+  -gobj_filename             "ipl_fname1
+  -peel_iter                 -1
+  -region_number             0
+
+!get pore number etc
+/cl_image
+  -input                     ring_pores
+  -output                    cl
+  -histofile_or_screentab    "ipl_fname8
+  -topology                  6
+  -type_out                  char
+
+/del cl
+
+!pore thickness
+/dt_object_param
+  -input                     ring_pores
+  -output                    pores_thickness
+  -gobj_filename             none
+  -peel_iter                 0
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -version2                  true
+  -histofile_or_screen       "ipl_fname9
+
+! pores solid in transparent cortex, for control
+
+/transparent_concat
+  -input_solid               pores_thickness
+  -input_transp              ring
+  -output                    trans
+
+/write trans "ipl_fname7
+/del trans 
+/del pores_thickness
+/del ring_pores
+
+!
 ..

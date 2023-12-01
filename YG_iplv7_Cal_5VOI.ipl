@@ -70,8 +70,6 @@
   -unit                      "ipl_unit0
   -value                     "ipl_misc1_0
 
-/write  seg    "ipl_segaim
-
 !----- We do not remove thin layers on top of bone -----
 !----- Masking of entire bone (will be used for Ca.Th) -----
 
@@ -103,22 +101,25 @@
   -erode_distance            "ipl_misc1_3
   -use_previous_margin       true
 
- /del dil
- /del dil1
+/del dil
+/del dil1
 
- /bounding_box_cut ero mask
+/bounding_box_cut ero mask
   -z_only false
   -border 2
- /del ero
+/del ero
 
- ! Deleted: set values for seg and mask
+! Deleted: set values for seg and mask
 
- /concat mask seg mask_a
+/concat mask cl mask_a
   -common_region_only        false
   -add_not_overlay           true
- /del mask
+/del mask
+/del cl
+/writ  mask_a "ipl_fname5 
+/gobj  seg    "ipl_fname5
+/write seg    "ipl_segaim
 
-!/writ  mask_a "ipl_fname5 
 !!! AT THIS POINT THE MASK CONSISTS OF THE ENTIRE CALVARIA WITH FILLED POROSITY 
 
 !--------------------------------
@@ -212,9 +213,9 @@
 /set_symbol voi      1
 
 ! Seems not necessary:
-!/db_scanco_activate
-!  -write                     true
-!  -type                      2
+/db_scanco_activate
+  -write                     true
+  -type                      2
 
 /db_e3_clear_eval
   -type                      e43
@@ -230,6 +231,9 @@
 /read seg  "ipl_segaim
 /read mask "ipl_mask
 /gobj seg  "ipl_mask
+/write seg "ipl_fname8
+! Important for the TMD. The SEG file also needs to be GOBJed. 
+! Here we use ipl_fname8 as a temp file for a temp mask
 /exa  seg  geo
 
 !
@@ -257,13 +261,13 @@
 !
 ! TMD (density of segmented volume)
 !
-!!!
+
 /copy org org1
 /gobj org "ipl_mask
-!!!
+!
 /voxgobj_scanco_param
   -input                     org
-  -gobj_filename             "ipl_segaim
+  -gobj_filename             "ipl_fname8
   -peel_iter                 2
   -region_number             1
 
@@ -446,9 +450,9 @@
   -val013                    "seg_native_lower_th
   -val014                    "seg_upper_th
   -val015                    "seg_native_upper_th
-  -val016                    "seg_vox_tot_volume
-  -val017                    "seg_vox_obj_volume
-  -val018                    "seg_vox_ov_tv
+  -val016                    "tri_tri_tot_volume 
+  -val017                    "tri_tri_obj_volume 
+  -val018                    "tri_tri_ov_tv 
   -val019                    "org2_vox_mu_mean
   -val020                    "org2_vox_mu_sd
   -val021                    "org2_vox_mu_flag
@@ -458,9 +462,9 @@
   -val025                    "dto_th_mean
   -val026                    "dto_th_sd
   -val027                    "dto_th_flag
-  -val028                    "tri_tri_tot_volume
-  -val029                    "tri_tri_obj_volume
-  -val030                    "tri_tri_ov_tv
+  -val028                    "seg_vox_tot_volume
+  -val029                    "seg_vox_obj_volume
+  -val030                    "seg_vox_ov_tv
   -val031                    "tri_tri_obj_surface
   -val032                    "tri_tri_bs_tv
   -val033                    "tri_tri_bs_bv
@@ -488,16 +492,7 @@
   -val055                    0
   -val056                    0
   -val057                    0
-!!! Duplicates:
-!  -val049                    "con_conn_density
-!  -val050                    "conn_ratio
-!  -val051                    "con_conn_flag
-!  -val052                    "dtb_sp_mean
-!  -val053                    "dtb_sp_sd
-!  -val054                    "dtb_sp_flag
-!  -val055                    "dtm_mat_n_mean
-!  -val056                    "dtm_mat_sp_sd
-!  -val057                    "dtm_mat_sp_flag
+
 
 !----------------------------------------------------!
 !           REGION 2 = PL (parietal left)            !
@@ -527,6 +522,9 @@
 /read seg  "ipl_segaim
 /read mask "ipl_mask
 /gobj seg  "ipl_mask
+/write seg "ipl_fname8
+! Important for the TMD. The SEG file also needs to be GOBJed. 
+! Here we use ipl_fname8 as a temp file for a temp mask
 /exa  seg  geo
 
 !
@@ -554,13 +552,13 @@
 !
 ! TMD (density of segmented volume)
 !
-!!!
+
 /copy org org1
 /gobj org "ipl_mask
-!!!
+!
 /voxgobj_scanco_param
   -input                     org
-  -gobj_filename             "ipl_segaim
+  -gobj_filename             "ipl_fname8
   -peel_iter                 2
   -region_number             1
 
@@ -743,9 +741,9 @@
   -val013                    "seg_native_lower_th
   -val014                    "seg_upper_th
   -val015                    "seg_native_upper_th
-  -val016                    "seg_vox_tot_volume
-  -val017                    "seg_vox_obj_volume
-  -val018                    "seg_vox_ov_tv
+  -val016                    "tri_tri_tot_volume 
+  -val017                    "tri_tri_obj_volume 
+  -val018                    "tri_tri_ov_tv 
   -val019                    "org2_vox_mu_mean
   -val020                    "org2_vox_mu_sd
   -val021                    "org2_vox_mu_flag
@@ -755,9 +753,9 @@
   -val025                    "dto_th_mean
   -val026                    "dto_th_sd
   -val027                    "dto_th_flag
-  -val028                    "tri_tri_tot_volume
-  -val029                    "tri_tri_obj_volume
-  -val030                    "tri_tri_ov_tv
+  -val028                    "seg_vox_tot_volume
+  -val029                    "seg_vox_obj_volume
+  -val030                    "seg_vox_ov_tv
   -val031                    "tri_tri_obj_surface
   -val032                    "tri_tri_bs_tv
   -val033                    "tri_tri_bs_bv
@@ -814,6 +812,9 @@
 /read seg  "ipl_segaim
 /read mask "ipl_mask
 /gobj seg  "ipl_mask
+/write seg "ipl_fname8
+! Important for the TMD. The SEG file also needs to be GOBJed. 
+! Here we use ipl_fname8 as a temp file for a temp mask
 /exa  seg  geo
 
 !
@@ -841,13 +842,13 @@
 !
 ! TMD (density of segmented volume)
 !
-!!!
+
 /copy org org1
 /gobj org "ipl_mask
-!!!
+!
 /voxgobj_scanco_param
   -input                     org
-  -gobj_filename             "ipl_segaim
+  -gobj_filename             "ipl_fname8
   -peel_iter                 2
   -region_number             1
 
@@ -1030,9 +1031,9 @@
   -val013                    "seg_native_lower_th
   -val014                    "seg_upper_th
   -val015                    "seg_native_upper_th
-  -val016                    "seg_vox_tot_volume
-  -val017                    "seg_vox_obj_volume
-  -val018                    "seg_vox_ov_tv
+  -val016                    "tri_tri_tot_volume 
+  -val017                    "tri_tri_obj_volume 
+  -val018                    "tri_tri_ov_tv 
   -val019                    "org2_vox_mu_mean
   -val020                    "org2_vox_mu_sd
   -val021                    "org2_vox_mu_flag
@@ -1042,9 +1043,9 @@
   -val025                    "dto_th_mean
   -val026                    "dto_th_sd
   -val027                    "dto_th_flag
-  -val028                    "tri_tri_tot_volume
-  -val029                    "tri_tri_obj_volume
-  -val030                    "tri_tri_ov_tv
+  -val028                    "seg_vox_tot_volume
+  -val029                    "seg_vox_obj_volume
+  -val030                    "seg_vox_ov_tv
   -val031                    "tri_tri_obj_surface
   -val032                    "tri_tri_bs_tv
   -val033                    "tri_tri_bs_bv
@@ -1101,6 +1102,9 @@
 /read seg  "ipl_segaim
 /read mask "ipl_mask
 /gobj seg  "ipl_mask
+/write seg "ipl_fname8
+! Important for the TMD. The SEG file also needs to be GOBJed. 
+! Here we use ipl_fname8 as a temp file for a temp mask
 /exa  seg  geo
 
 !
@@ -1128,13 +1132,13 @@
 !
 ! TMD (density of segmented volume)
 !
-!!!
+
 /copy org org1
 /gobj org "ipl_mask
-!!!
+!
 /voxgobj_scanco_param
   -input                     org
-  -gobj_filename             "ipl_segaim
+  -gobj_filename             "ipl_fname8
   -peel_iter                 2
   -region_number             1
 
@@ -1316,9 +1320,9 @@
   -val013                    "seg_native_lower_th
   -val014                    "seg_upper_th
   -val015                    "seg_native_upper_th
-  -val016                    "seg_vox_tot_volume
-  -val017                    "seg_vox_obj_volume
-  -val018                    "seg_vox_ov_tv
+  -val016                    "tri_tri_tot_volume 
+  -val017                    "tri_tri_obj_volume 
+  -val018                    "tri_tri_ov_tv 
   -val019                    "org2_vox_mu_mean
   -val020                    "org2_vox_mu_sd
   -val021                    "org2_vox_mu_flag
@@ -1328,9 +1332,9 @@
   -val025                    "dto_th_mean
   -val026                    "dto_th_sd
   -val027                    "dto_th_flag
-  -val028                    "tri_tri_tot_volume
-  -val029                    "tri_tri_obj_volume
-  -val030                    "tri_tri_ov_tv
+  -val028                    "seg_vox_tot_volume
+  -val029                    "seg_vox_obj_volume
+  -val030                    "seg_vox_ov_tv
   -val031                    "tri_tri_obj_surface
   -val032                    "tri_tri_bs_tv
   -val033                    "tri_tri_bs_bv
@@ -1387,6 +1391,9 @@
 /read seg  "ipl_segaim
 /read mask "ipl_mask
 /gobj seg  "ipl_mask
+/write seg "ipl_fname8
+! Important for the TMD. The SEG file also needs to be GOBJed. 
+! Here we use ipl_fname8 as a temp file for a temp mask
 /exa  seg  geo
 
 !
@@ -1414,13 +1421,13 @@
 !
 ! TMD (density of segmented volume)
 !
-!!!
+
 /copy org org1
 /gobj org "ipl_mask
-!!!
+!
 /voxgobj_scanco_param
   -input                     org
-  -gobj_filename             "ipl_segaim
+  -gobj_filename             "ipl_fname8
   -peel_iter                 2
   -region_number             1
 
@@ -1603,9 +1610,9 @@
   -val013                    "seg_native_lower_th
   -val014                    "seg_upper_th
   -val015                    "seg_native_upper_th
-  -val016                    "seg_vox_tot_volume
-  -val017                    "seg_vox_obj_volume
-  -val018                    "seg_vox_ov_tv
+  -val016                    "tri_tri_tot_volume 
+  -val017                    "tri_tri_obj_volume 
+  -val018                    "tri_tri_ov_tv 
   -val019                    "org2_vox_mu_mean
   -val020                    "org2_vox_mu_sd
   -val021                    "org2_vox_mu_flag
@@ -1615,9 +1622,9 @@
   -val025                    "dto_th_mean
   -val026                    "dto_th_sd
   -val027                    "dto_th_flag
-  -val028                    "tri_tri_tot_volume
-  -val029                    "tri_tri_obj_volume
-  -val030                    "tri_tri_ov_tv
+  -val028                    "seg_vox_tot_volume
+  -val029                    "seg_vox_obj_volume
+  -val030                    "seg_vox_ov_tv
   -val031                    "tri_tri_obj_surface
   -val032                    "tri_tri_bs_tv
   -val033                    "tri_tri_bs_bv

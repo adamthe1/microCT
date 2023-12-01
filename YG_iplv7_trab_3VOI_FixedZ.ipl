@@ -5,9 +5,11 @@
 !        _/    _/        _/             (c) SCANCO Medical AG
 !     _/_/_/  _/        _/_/_/_/
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!! Segmentation of 4 Phases/Objects V1.1 !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!      Segmentation of trabecular bone        !!
+!! Analysis in entire VOI and dist/Prox halves !!
+!!      Fixed VOI (as contoured region)        !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! note:    This script is adapted from TRAB_DIST_PROX.COM
 
@@ -16,30 +18,30 @@
 ! 09-AUG-2023: Added option for universal start of the trabecular bone
 
 
-! Trabeculer bone analysis in 2 subregions
-! This script segments all objects according to a unique
-! threshold. Then 5 objects are separated based on GOBJs
-! The values of the segmented objects can be set.
+! Trabecular bone analysis in 3 subregions
+! This script segments all objects according to a unique threshold. 
+! Then the entire TRAB region is separated into distal and proximal halves.
 
 ! Input:
-! Trabeculer bone isq
-
-!!! Add +10 to x and y dims !!!!
+! Trabecular bone isq
+! GOBJ of the VOI (excludes cortex)
 
 /db_scanco_activate
   -write                     true
   -type                      2
 
-/db_e3_clear_eval
-  -type                      e43
-  -index                     "ipl_measno
-  -mgroup                    "ipl_mgroup
-  -egroup                    "ipl_egroup
-  -region                    "ipl_region
-  -version                   "ipl_version
+! The /db command is defined below before each region's analysis
+!/db_e3_clear_eval
+!  -type                      e43
+!  -index                     "ipl_measno
+!  -mgroup                    "ipl_mgroup
+!  -egroup                    "ipl_egroup
+!  -region                    "ipl_region
+!  -version                   "ipl_version
 
-..
-! not sure what this will do
+
+! Increase the white box by 10 pixels on the X and Y axes:
+! This part is not needed as a border (bx and by) of 10 is added.
 !/calculate1d "ipl_voix - 10 d ipl_voix
 !/calculate1d "ipl_voiy - 10 d ipl_voiy
 !/calculate1d "ipl_voidx + 20 d ipl_voidx
@@ -89,7 +91,7 @@
 
 /del out
 
-/write  seg    "ipl_segaim
+/write  seg  "ipl_segaim
   -compress_type  bin
 
 /gobj_to_aim
@@ -103,33 +105,21 @@
   -z_only                    false
   -border                    0 0 0
 
-! the aim of all
+! The dimensions of aim_gobj0 match the contouring
+! It will be used to create the 2 subregions (dist and prox)
 /write aim_gobj0 "ipl_fname0 
 
-!-----------------------------------------------!
-! Analyze the segaim to know the midslice later !
-!-----------------------------------------------!
+
+!-------------------------------!
+! Divide the VOI into 3 VOIs    !
+!-------------------------------!
 
 /set_symbol_prefix calc_
-
-!/read seg  "ipl_segaim
-!/gobj seg  "ipl_fname0 "ipl_peel0
 /exa  aim_gobj0  geo
-
-!------------------------------- ---------------------!
-! Start the trabecular bone at (misc1_0) from bone    !
-!-----------------------------------------------------!
-
-
-
-!-------------------------------!
-! Divide the Analysis into 3    !
-!-------------------------------!
-
 /set_symbol mid_slice "calc_dim_z
 /calculate1d "mid_slice / 2 int64 mid_slice
 
-! Prox Mask
+! Prox Mask (assuming prox region is at lower slice numbers)
 
 /sub_get          
   -input                     aim_gobj0
@@ -143,7 +133,7 @@
   -gobj_filename             "ipl_gobj1
   -min_elements              0
   -max_elements              0
-  -curvature_smooth          1
+  -curvature_smooth          5
 
 ! Dist Mask
 
@@ -159,23 +149,18 @@
   -gobj_filename             "ipl_gobj2
   -min_elements              0
   -max_elements              0
-  -curvature_smooth          1         
+  -curvature_smooth          5         
 
 !---------------------------------------------!
 !           MORPHOMETRIC ANALYSES             !
 !---------------------------------------------!
 
 !----------------------------------------------------!
-!           REGION 1 = ALL                           !
+!           REGION 1 = ALL the trab region           !
 !----------------------------------------------------!
 
 /set_symbol ipl_gobj "ipl_gobj0
 /set_symbol voi      1
-
-! Seems not necessary:
-!/db_scanco_activate
-!  -write                     true
-!  -type                      2
 
 /db_e3_clear_eval
   -type                      e43
@@ -185,50 +170,45 @@
   -region                    "voi
   -version                   "ipl_version
 
-
-/set_symbol_prefix seg_
-!!!
 /read seg  "ipl_segaim
-/gobj seg  "ipl_gobj
-/exa  seg  geo
+/gobj seg  "ipl_gobj "ipl_peel0
 
 !
 ! voxel counting
 !
+/set_symbol_prefix seg_
+
+/exa  seg  geo
 
 /vox_scanco_param
   -input                     seg
 
-
-/read org "ipl_aim
-/set_symbol_prefix org_
-
 !
 ! BMD (apparent density)
 !
-
+/read org "ipl_aim
+/set_symbol_prefix org_
 /voxgobj_scanco_param
   -input                     org
   -gobj_filename             "ipl_gobj
   -peel_iter                 "ipl_peel0
   -region_number             0
-!!!
-/set_symbol_prefix org2_
 
 !
 ! TMD (density of segmented volume)
 !
-!!!
+/set_symbol_prefix org2_
 /copy org org1
 /gobj org "ipl_gobj
-!!!
+!!! It is not necessary to save the orginial AIM here 
+!!! but it will be at the dist and prox regions...
 /voxgobj_scanco_param
   -input                     org
   -gobj_filename             "ipl_segaim
   -peel_iter                 2
   -region_number             1
 
-/copy org1 org
+/ren org1 org
 
 !----------------------------------------------
 ! dt object here because of db_set_mean_accuray
@@ -251,7 +231,7 @@
   -histofile_or_screen       "ipl_fname2
 
 /write  out    "ipl_fname1
-!-------notice
+!------- Do not save ipl_fname1-4 in other VOIs ----!
 /del out
 
 !
@@ -321,8 +301,8 @@
 
 
 ! connectivity changes the input volume
-/read seg "ipl_segaim
-
+/read seg  "ipl_segaim
+/gobj seg  "ipl_gobj "ipl_peel0
 
 !-----------
 ! trabecular spacing
@@ -340,7 +320,7 @@
   -ridge_epsilon             0.900000
   -assign_epsilon            1.800000
   -histofile_or_screen       "ipl_fname4
-!-------------------notice
+!------- Do not save ipl_fname1-4 in other VOIs ----!
 /write  out    "ipl_fname3
 
 /del out
@@ -363,8 +343,8 @@
   -ridge_epsilon             0.900000
   -assign_epsilon            1.800000
   -histofile_or_screen       "ipl_fname5
-!-----------------notice
-!!!
+!------- Do not save ipl_fname1-5 in other VOIs ----!
+
 !
 ! Calculate values for db
 !
@@ -381,7 +361,6 @@
 /calculate1d "conn_ratio * 100 double conn_ratio
 
 !!! Here, the symbol for "region" has been changed to "voi which is defined as 0, 1, 2... 
-
 
 /db_e3_write_064
   -type                      e43
@@ -451,15 +430,10 @@
   -val057                    "dtm_mat_sp_flag
 
 !----------------------------------------------------!
-!           REGION 2 = prox                           !
+!           REGION 2 = prox                          !
 !----------------------------------------------------!
 /set_symbol ipl_gobj "ipl_gobj1
 /set_symbol voi      2
-
-! Seems not necessary:
-!/db_scanco_activate
-!  -write                     true
-!  -type                      2
 
 /db_e3_clear_eval
   -type                      e43
@@ -473,46 +447,44 @@
 /set_symbol_prefix seg_
 !!!
 /read seg  "ipl_segaim
-/gobj seg  "ipl_gobj
-/exa  seg  geo
+/gobj seg  "ipl_gobj "ipl_peel0
 
 !
 ! voxel counting
 !
+/set_symbol_prefix seg_
+
+/exa  seg  geo
 
 /vox_scanco_param
   -input                     seg
 
-
-/read org "ipl_aim
-/set_symbol_prefix org_
-
 !
 ! BMD (apparent density)
 !
-
+/read org "ipl_aim
+/set_symbol_prefix org_
 /voxgobj_scanco_param
   -input                     org
   -gobj_filename             "ipl_gobj
   -peel_iter                 "ipl_peel0
   -region_number             0
-!!!
-/set_symbol_prefix org2_
 
 !
 ! TMD (density of segmented volume)
 !
-!!!
+/set_symbol_prefix org2_
 /copy org org1
 /gobj org "ipl_gobj
-!!!
+!!! It is not necessary to save the orginial AIM here 
+!!! but it will be at the dist and prox regions...
 /voxgobj_scanco_param
   -input                     org
   -gobj_filename             "ipl_segaim
   -peel_iter                 2
   -region_number             1
 
-/copy org1 org
+/ren org1 org
 
 !----------------------------------------------
 ! dt object here because of db_set_mean_accuray
@@ -603,8 +575,8 @@
 
 
 ! connectivity changes the input volume
-/read seg "ipl_segaim
-
+/read seg  "ipl_segaim
+/gobj seg  "ipl_gobj "ipl_peel0
 
 !-----------
 ! trabecular spacing
@@ -736,11 +708,6 @@
 /set_symbol ipl_gobj "ipl_gobj2
 /set_symbol voi      3
 
-! Seems not necessary:
-!/db_scanco_activate
-!  -write                     true
-!  -type                      2
-
 /db_e3_clear_eval
   -type                      e43
   -index                     "ipl_measno
@@ -749,50 +716,47 @@
   -region                    "voi
   -version                   "ipl_version
 
-
 /set_symbol_prefix seg_
 !!!
 /read seg  "ipl_segaim
-/gobj seg  "ipl_gobj
-/exa  seg  geo
+/gobj seg  "ipl_gobj "ipl_peel0
 
 !
 ! voxel counting
 !
+/set_symbol_prefix seg_
+
+/exa  seg  geo
 
 /vox_scanco_param
   -input                     seg
 
-
-/read org "ipl_aim
-/set_symbol_prefix org_
-
 !
 ! BMD (apparent density)
 !
-
+/read org "ipl_aim
+/set_symbol_prefix org_
 /voxgobj_scanco_param
   -input                     org
   -gobj_filename             "ipl_gobj
   -peel_iter                 "ipl_peel0
   -region_number             0
-!!!
-/set_symbol_prefix org2_
 
 !
 ! TMD (density of segmented volume)
 !
-!!!
+/set_symbol_prefix org2_
 /copy org org1
 /gobj org "ipl_gobj
-!!!
+!!! It is not necessary to save the orginial AIM here 
+!!! but it will be at the dist and prox regions...
 /voxgobj_scanco_param
   -input                     org
   -gobj_filename             "ipl_segaim
   -peel_iter                 2
   -region_number             1
 
-/copy org1 org
+/ren org1 org
 
 !----------------------------------------------
 ! dt object here because of db_set_mean_accuray
@@ -884,8 +848,8 @@
 
 
 ! connectivity changes the input volume
-/read seg "ipl_segaim
-
+/read seg  "ipl_segaim
+/gobj seg  "ipl_gobj "ipl_peel0
 
 !-----------
 ! trabecular spacing

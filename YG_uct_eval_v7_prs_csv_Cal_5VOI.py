@@ -87,10 +87,6 @@ d3result_log = f'{resultdir}M{int(mgroup):04}_E{int(egroup):04}_{shortnamet}.csv
 
 
 # Reading out 3D result database and putting it into appended .txt files"
-
-
-
-
 with open(commandfile, "at") as commandfile_fp:
     ## create mgroup/egroup folders by copy/delete tempfile
     #print(f'"{SWAP_admin_console_exe}" get-file {tmpfile1} {tmpfile2} --hierarchy auto-parent', file=commandfile_fp)
@@ -102,11 +98,17 @@ with open(commandfile, "at") as commandfile_fp:
     print(f'"{uct_list_exe_filename}" -t={template} -o={d3result}     -m={mgroup} -e={egroup} -r=1 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result}     -m={mgroup} -e={egroup} -r=2 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result}     -m={mgroup} -e={egroup} -r=3 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
+    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result}     -m={mgroup} -e={egroup} -r=4 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
+    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result}     -m={mgroup} -e={egroup} -r=5 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_all} -m={mgroup} -e={egroup} -r=1 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_all} -m={mgroup} -e={egroup} -r=2 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_all} -m={mgroup} -e={egroup} -r=3 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
+    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_all} -m={mgroup} -e={egroup} -r=4 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
+    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_all} -m={mgroup} -e={egroup} -r=5 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_log} -m={mgroup} -e={egroup} -r=1 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_log} -m={mgroup} -e={egroup} -r=2 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_log} -m={mgroup} -e={egroup} -r=3 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
+    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_log} -m={mgroup} -e={egroup} -r=4 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
+    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_log} -m={mgroup} -e={egroup} -r=5 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)

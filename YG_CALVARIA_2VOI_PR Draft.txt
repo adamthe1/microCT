@@ -1,0 +1,586 @@
+!      
+!         _/_/_/  _/_/_/    _/        
+!          _/    _/    _/  _/           Image Processing Language  
+!         _/    _/_/_/    _/ 
+!        _/    _/        _/             (c) Andres Laib, IBT/ETH Zürich
+!     _/_/_/  _/        _/_/_/_/                         Scanco Medical
+!        
+!  IPL Batch Scanco
+!
+
+/set_symbol gau_file 	"ipl_fname0
+!      The ipl_segaim is the multicolored bilateral calvaria with filled
+!	diploe and colored pits
+/set_symbol ipl_calseg 	"ipl_fname1	(_CAL_SEG.AIM)
+/set_symbol ipl_ti	"ipl_fname2	(_TiP_SEG.AIM)
+!
+
+! Calvaria with filled diploe and mask to evaluate pits only (see depth below)
+/set_symbol seg_0_file 	"ipl_fname3
+/set_symbol seg_1_file 	"ipl_fname4
+/set_symbol mask0_file 	"ipl_fname5
+/set_symbol mask1_file 	"ipl_fname6
+
+!	SEG_0_FILE   R_SEG.AIM 
+!	SEG_1_FILE   L_SEG.AIM  
+!	MASK0_FILE   R_MASK.AIM  	
+!	MASK1_FILE   L_MASK.AIM  
+!
+/set_symbol mask0_gobj 	"ipl_fname7
+/set_symbol mask1_gobj 	"ipl_fname8
+!	MASK0_GOBJ   R_MASK.GOBJ  	
+!	MASK1_GOBJ   L_MASK.GOBJ 
+!
+/set_symbol temp_file 	"ipl_fname9
+	TEMP_FILE    _TEMP.AIM 
+!		
+/set_symbol pit_depth   3
+/calculate1d "pit_depth * 2 d ipl_peel0
+/calculate1d "pit_depth * 2 d ipl_peel1
+
+!!! Don't know if relevant with new SW...
+!!! IPL_ISQ = IPL_ORIG_ISQ
+!
+/set_symbol	use_gfilt    no
+!
+/db_scanco_activate true         
+                   
+! create .AIM file from .ISQ        
+
+/if "use_gfilt eqs yes
+  /set_symbol ipl_isq ignore.isq
+/endif
+
+/isq_to_aim
+  -aim_name                  org
+  -isq_filename              "ipl_isq
+  -pos                       "ipl_voix "ipl_voiy "ipl_voiz
+  -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+
+/write org "ipl_aim
+
+/sup org
+  -supdim_numbers            4 4 1
+  -testoff_pixels            "ipl_support0                                          
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/gauss org gau
+  -sigma		    "ipl_sigma0	
+  -sup                      "ipl_support0
+
+!!! CHECK:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!If needed add read org below
+/del org
+
+/write gau "gau_file
+
+/if "use_gfilt eqs yes
+  /read  gau "gau_file
+  !/read org "ipl_aim
+/endif
+
+/thres gau seg  
+  -low 			    "ipl_lower0
+  -up			    "ipl_upper0		
+  -value                     127
+  -unit                     "ipl_unit0
+
+!!! CHECK if 1000 is enough (it was 40 before...)
+/cl_nr seg ti
+  -min_number                1
+  -max_number                1000
+  -value_in_range            110
+
+/bounding_box_cut  ti  ti_bb  false 5
+
+/write ti_bb  "ipl_ti
+
+/cl_nr seg cl
+  -min_number                100000
+  -max_number                0
+
+/bounding_box_cut
+  -input                     cl
+  -output                    seg
+  -z_only                    false
+  -border                    5
+
+/write seg "ipl_calseg
+
+!----------------------------------------,
+! Generate SEG and MASK for both regions |
+!----------------------------------------'
+
+!!! /read seg "ipl_calseg   
+
+!--------------
+! Mask Region 0:
+! Seg0/cal will be the calvaria with filled out diploe but empty resorption lacunae
+! Mask0 stands for seg_0 with filled out lacunae (-1 vox thickness)
+!--------------
+
+/cop  seg  seg0
+
+/gobj seg0 "ipl_gobj0 0 
+/bounding_box_cut seg0 bb false 5
+/ren  bb cal
+
+/inv  cal "ipl_gobj0 0
+
+/cl   cal
+  -first_rank                1
+  -last_rank                 2
+  -connect_boundary          false
+  -value_in_range            127   
+/inv  cal "ipl_gobj0 0 
+
+/dilation
+  -input                     cal
+  -output                    dil
+  -dilate_distance           15
+
+/erosion
+  -input                     dil
+  -output                    mask 
+  -erode_distance            16
+  -use_previous_margin       false
+/del   dil
+
+/set mask 40 0
+/set cal  20 0
+
+! In masks, bone and closed diploe inside VOI are 20 or 60, 
+! Diploe connected to exterior and pits are 40.
+
+/concat mask cal mask0
+  -common_region_only        false
+  -add_not_overlay           true
+/del mask
+/del cal
+
+/write mask0 "mask0_file  
+
+!--------------
+! Mask Region 1:
+! Seg_1 is the calvaria with filled out diploe but empty resorption lacunae
+! Mask1 is seg_1 with filled out lacunae (-1 vox thickness)
+!--------------
+
+/cop  seg  seg1
+
+/gobj seg1 "ipl_gobj1 0 
+/bounding_box_cut seg1 bb false 5
+/ren  bb cal
+
+/del bb
+/del seg1
+
+/inv  cal "ipl_gobj1 0
+/cl   cal
+  -first_rank                1
+  -last_rank                 2
+  -connect_boundary          false
+  -value_in_range            127   
+/inv  cal "ipl_gobj1 0  
+
+/dilation
+  -input                     cal
+  -output                    dil
+  -dilate_distance           15
+
+/erosion
+  -input                     dil
+  -output                    mask 
+  -erode_distance            16
+  -use_previous_margin       false
+/del   dil
+
+/set mask 40 0
+/set cal  20 0
+! In masks, bone and closed diploe inside VOI are 20 or 60, 
+! Diploe connected to exterior and pits are 40.
+                                                  
+/concat mask cal mask1
+  -common_region_only        true
+  -add_not_overlay           true
+/del mask
+/del cal
+
+/write mask1 "mask1_file  
+
+!--------------------------------------------------
+! Combine all objects in one SEG file (ipl_segaim):
+!--------------------------------------------------
+
+/read mask0 "mask0_file
+/read mask1 "mask1_file
+
+/concat  mask0 mask1 mask2
+  -common_region_only        false
+  -add_not_overlay           false
+
+! At this point, the diploe was often continuous with the resorption 
+! We want to cancel the diploe from the resorption at the surface
+! Here we limit the pits as 4 vox depth intra and extra-cranially (min calvaria
+!  width is ~90um)
+
+/set mask2 127 0
+/erosion
+  -input                     mask2
+  -output                    deep 
+  -erode_distance            "pit_depth
+  -use_previous_margin       false 
+
+/set deep 127 0
+/read seg "ipl_calseg   
+/set seg  127 0
+
+/concat   deep seg filled_seg 
+  -common_region_only        false
+  -add_not_overlay           true
+/del   deep
+/del   seg
+
+/set filled_seg 0 127
+/cl  filled_seg  
+  -first_rank                1
+  -last_rank                 1
+  -connect_boundary          false
+  -value_in_range            127   
+/set filled_seg 0 127
+!!
+/write filled_seg  "temp_file  
+
+! Create the two subregions:
+! --------------------------
+/gobj mask0 "ipl_gobj0 "ipl_peel0
+/gobj mask1 "ipl_gobj1 "ipl_peel1
+/writ mask0 "mask0_file 
+/writ mask1 "mask1_file  
+/copy filled_seg fs0
+/gobj fs0 "mask0_file 0
+/boun fs0  bb0 f 5   
+/writ bb0 "seg_0_file 
+/copy filled_seg fs1
+/gobj fs1 "mask1_file 0
+/boun fs1  bb1 f 5   
+/writ bb1 "seg_1_file 
+/del fs0
+/del bb0
+/del fs1
+/del bb1
+
+! Create full image with "red" pits:
+! ----------------------------------
+
+/concat  mask0 mask1 mask2
+  -common_region_only        false
+  -add_not_overlay           false
+/del mask0
+/del mask1
+
+/set mask2 60 0 
+
+/set filled_seg 40 0
+
+/concat  mask2 filled_seg out
+  -common_region_only        false
+  -add_not_overlay           true
+
+/concat  "ipl_ti  out  out2
+  -common_region_only        false
+  -add_not_overlay           false
+
+/write out2 "ipl_segaim
+
+!!!  ipl_segaim is tricolor:    Surrounding skull        =  40
+!!!				Resorption lacunae       =  60
+!!!				Calvaria & diploe in VOI = 100
+!!!				Ti particles around	 = 110
+                   
+! Make GOBJs:
+! -----------
+/read mask0 "mask0_file 
+/read mask1 "mask1_file  
+/togobj_from_aim    mask0  "mask0_gobj   0 0       
+  -curvature_smooth         5
+/togobj_from_aim    mask1  "mask1_gobj   0 0       
+  -curvature_smooth         5
+
+/del mask0
+/del mask1
+
+!
+/set_symbol seg_file  "seg_0_file
+/set_symbol mask_file "mask0_file
+/set_symbol gobj_file "mask0_gobj
+/set_symbol peel_iter 0
+
+ SEG_FILE  = SEG_0_FILE
+ MASK_FILE = MASK0_FILE
+ GOBJ_FILE = MASK0_GOBJ
+ PEEL_ITER = 0
+!!!! MISSING:  SIDE 	    = FEXTRACT(8,10,side0_name) - "_"  !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+
+/read seg  "seg_file
+/read mask "mask_file
+/gobj seg  "mask_file
+
+/db_clear_eval seg 
+
+/vox_scanco_param
+  -input                     seg
+
+/read org  "ipl_aim
+
+! apparent density
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "gobj_file
+  -peel_iter                 "peel_iter
+  -region_number             0
+
+! tissue (matrix) density of segmented volume
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "gobj_file !!! THIS IS A MISTAKE... SHOULD BE THE SEG FILE
+  -peel_iter                 1
+  -region_number             1
+
+!!! TRI used for seg calvarial bone only (with voids). 
+  
+/tri seg tri
+  -gobj_filename             gobj_from_log                      
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+                                   
+!!! Thickness of mask:             
+
+/dt_object
+  -input                     mask
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname1
+
+/write out "ipl_fname0
+
+ 
+!!! Sp of voids:
+
+/dt_background
+  -input                     seg
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname3
+
+/write out "ipl_fname2              
+
+..
+ UCT_LIST_0:
+! For the VOI 0:
+!
+! Generate RESULT list and append to PROJECT txt file:
+ D3RESULT	:= 'EVAL_DIR''EVAL_FNAME'_'EVAL_PROJECTT'_'SIDE'.TXT
+ D3RESULT_ALL	:= 'EVAL_DIR''EVAL_FNAME'_3DRESULTS_'EVAL_PROJECTT'_'SIDE'.TXT
+ D3RESULT_LOG	:= UCT_RESULTS:UCT_LIST_3DLOG_'EVAL_PROJECTT'_'SIDE'.TXT
+!
+!------------------------------------------------------------------------------
+       COMMANDFILE := SYSSCRATCH:ULIST_'FILENAME'.COM
+       SHOW SYMBOL COMMANDFILE
+!------------------------------------------------------------------------------
+       OPEN/WRITE OUTFILE 'COMMANDFILE'
+!------------------------------------------------------------------------------
+ WRITE OUTFILE "! Reading out 3D result database and putting it into appended .txt files"
+ WRITE OUTFILE "!"
+ WRITE OUTFILE " IF FSEARCH(""''D3RESULT_ALL'"") .EQS. """" "
+ WRITE OUTFILE " THEN"
+ WRITE OUTFILE "   COPY UU:UCT_3D_LIST_HEADER.TXT ''D3RESULT_ALL'"
+ WRITE OUTFILE " ENDIF"
+ WRITE OUTFILE " IF FSEARCH(""''D3RESULT_LOG'"") .EQS. """" "
+ WRITE OUTFILE " THEN"
+ WRITE OUTFILE "   COPY UU:UCT_3D_LIST_HEADER.TXT ''D3RESULT_LOG'"
+ WRITE OUTFILE " ENDIF"
+!
+ WRITE OUTFILE " UCT_LIST"
+ WRITE OUTFILE "UU:UCT_3D_LIST_NOHEAD.TXT"
+ WRITE OUTFILE "''D3RESULT'"
+ WRITE OUTFILE "0" ! DEFAULT UNIT
+ WRITE OUTFILE "''EVAL_MEASNO'"
+ WRITE OUTFILE "''EVAL_MEASNO'"
+!
+ WRITE OUTFILE " APPEND ''D3RESULT' ''D3RESULT_ALL'"
+ WRITE OUTFILE " APPEND ''D3RESULT' ''D3RESULT_LOG'"
+!
+ WRITE OUTFILE " DELETE ''D3RESULT';"
+ WRITE OUTFILE " EXIT"
+!
+!------------------------------------------------------------------------------
+       CLOSE OUTFILE
+!------------------------------------------------------------------------------
+!      SET NOVERIFY
+       @'COMMANDFILE'
+       DELETE/NOLOG/NOCONFIRM 'COMMANDFILE';
+!------------------------------------------------------------------------------
+!
+!------------------------------------------------------------------------------
+ VOI_1:
+!
+ SEG_FILE  = SEG_1_FILE
+ MASK_FILE = MASK1_FILE
+ GOBJ_FILE = MASK1_GOBJ
+ PEEL_ITER = 0
+ SIDE 	    = FEXTRACT(8,10,side1_name) - "_"  
+!
+ IPL_BATCH
+/db_scanco_activate true  
+
+/read seg  "seg_file
+/read mask "mask_file
+/gobj seg  "mask_file
+
+/db_clear_eval seg 
+
+/vox_scanco_param
+  -input                     seg
+
+/read org  "ipl_aim
+
+! apparent density
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "gobj_file
+  -peel_iter                 "peel_iter
+  -region_number             0
+
+! tissue (matrix) density of segmented volume
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "gobj_file
+  -peel_iter                 1
+  -region_number             1
+
+!!! TRI used for seg calvarial bone:
+  
+/tri seg tri
+  -gobj_filename             gobj_from_log                    
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+                                   
+!!! Thickness of mask:             
+
+/dt_object
+  -input                     mask
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname1
+
+/write out "ipl_fname0
+
+ 
+!!! Sp of voids:
+
+/dt_background
+  -input                     seg
+  -output                    out
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -histofile_or_screen       "ipl_fname3
+
+/write out "ipl_fname2              
+
+..
+ UCT_LIST_1:
+! For the VOI 1:
+!
+! Generate RESULT list and append to PROJECT txt file:
+ D3RESULT	:= 'EVAL_DIR''EVAL_FNAME'_'EVAL_PROJECTT'_'SIDE'.TXT
+ D3RESULT_ALL	:= 'EVAL_DIR''EVAL_FNAME'_3DRESULTS_'EVAL_PROJECTT'_'SIDE'.TXT
+ D3RESULT_LOG	:= UCT_RESULTS:UCT_LIST_3DLOG_'EVAL_PROJECTT'_'SIDE'.TXT
+!
+!------------------------------------------------------------------------------
+       COMMANDFILE := SYSSCRATCH:ULIST_'FILENAME'.COM
+       SHOW SYMBOL COMMANDFILE
+!------------------------------------------------------------------------------
+       OPEN/WRITE OUTFILE 'COMMANDFILE'
+!------------------------------------------------------------------------------
+ WRITE OUTFILE "! Reading out 3D result database and putting it into appended .txt files"
+ WRITE OUTFILE "!"
+ WRITE OUTFILE " IF FSEARCH(""''D3RESULT_ALL'"") .EQS. """" "
+ WRITE OUTFILE " THEN"
+ WRITE OUTFILE "   COPY UU:UCT_3D_LIST_HEADER.TXT ''D3RESULT_ALL'"
+ WRITE OUTFILE " ENDIF"
+ WRITE OUTFILE " IF FSEARCH(""''D3RESULT_LOG'"") .EQS. """" "
+ WRITE OUTFILE " THEN"
+ WRITE OUTFILE "   COPY UU:UCT_3D_LIST_HEADER.TXT ''D3RESULT_LOG'"
+ WRITE OUTFILE " ENDIF"
+!
+ WRITE OUTFILE " UCT_LIST"
+ WRITE OUTFILE "UU:UCT_3D_LIST_NOHEAD.TXT"
+ WRITE OUTFILE "''D3RESULT'"
+ WRITE OUTFILE "0" ! DEFAULT UNIT
+ WRITE OUTFILE "''EVAL_MEASNO'"
+ WRITE OUTFILE "''EVAL_MEASNO'"
+!
+ WRITE OUTFILE " APPEND ''D3RESULT' ''D3RESULT_ALL'"
+ WRITE OUTFILE " APPEND ''D3RESULT' ''D3RESULT_LOG'"
+!
+ WRITE OUTFILE " DELETE ''D3RESULT';"
+ WRITE OUTFILE " EXIT"
+!
+!------------------------------------------------------------------------------
+       CLOSE OUTFILE
+!------------------------------------------------------------------------------
+!      SET NOVERIFY
+       @'COMMANDFILE'
+       DELETE/NOLOG/NOCONFIRM 'COMMANDFILE';
+!------------------------------------------------------------------------------
+!
+!
+ IF keep_files .EQS. "Yes" THEN GOTO ENDCOM
+ PURGE 'ipl_segaim'
+ PURGE 'IPL_CALSEG'
+ PURGE 'SEG_0_FILE'  
+ PURGE 'SEG_1_FILE'  
+ PURGE 'MASK0_FILE'
+ PURGE 'MASK1_FILE'
+ PURGE 'MASK0_GOBJ' 
+ PURGE 'MASK1_GOBJ'
+!
+ DELETE/NOCONFIRM 'TEMP_FILE';* 
+!
+ ENDCOM:
+ EXIT

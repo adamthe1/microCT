@@ -1,0 +1,92 @@
+$!         _/_/_/  _/_/_/    _/        
+$!          _/    _/    _/  _/           Image Processing Language  
+$!         _/    _/_/_/    _/ 
+$!        _/    _/        _/             (c) Andres Laib, IBT/ETH Zürich
+$!     _/_/_/  _/        _/_/_/_/                         Scanco Medical
+$!        
+$!  IPL Batch Scanco
+$!
+$!
+$! 
+$!
+$	FILENAME     = F$PARSE("''IPL_ISQ'",,,"NAME")
+$	DEV          = F$PARSE("''IPL_ISQ'",,,"DEVICE")
+$	DIR          = F$PARSE("''IPL_ISQ'",,,"DIRECTORY")
+$	mask_file    :=  'DEV''DIR''FILENAME'_MASK_T.AIM
+$	IPL_GOBJ_P   :=  'DEV''DIR''FILENAME'_P.GOBJ
+$	IPL_GOBJ_D   :=  'DEV''DIR''FILENAME'_D.GOBJ
+$!
+$ ON ERROR THEN EXIT
+$ IPL_BATCH
+    
+/db_scanco_activate true
+
+
+isq_to_aim
+  -aim_name                  org
+  -isq_filename              "ipl_isq
+  -pos                       "ipl_voix "ipl_voiy "ipl_voiz
+  -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+
+!
+! write VOI to disk (as AIM)
+!
+/sup org
+  -supdim_numbers            4 4 1
+  -testoff_pixels            "ipl_support0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+
+
+
+
+..
+$ UCT_LIST_T:
+
+
+$! Generate RESULT list and append to PROJECT txt file:
+$ D3RESULT	:= 'EVAL_DIR''EVAL_FNAME'_'EVAL_PROJECTT'_L'DIMZ'.TXT
+$ D3RESULT_ALL	:= 'EVAL_DIR''EVAL_FNAME'_3DRESULTS_'EVAL_PROJECTT'_L'DIMZ'.TXT
+$ D3RESULT_LOG	:= UCT_RESULTS:UCT_LIST_3DLOG_'EVAL_PROJECTT'_L'DIMZ'.TXT
+
+$!
+$!------------------------------------------------------------------------------
+$       COMMANDFILE := SYS$SCRATCH:ULIST_'FILENAME'.COM
+$       SHOW SYMBOL COMMANDFILE
+$!------------------------------------------------------------------------------
+$       OPEN/WRITE OUTFILE 'COMMANDFILE'
+$!------------------------------------------------------------------------------
+$ WRITE OUTFILE "$! Reading out 3D result database and putting it into appended .txt files"
+$ WRITE OUTFILE "$!"
+$ WRITE OUTFILE "$ IF F$SEARCH(""''D3RESULT_ALL'"") .EQS. """" "
+$ WRITE OUTFILE "$ THEN"
+$ WRITE OUTFILE "$   COPY UU:UCT_3D_LIST_HEADER.TXT ''D3RESULT_ALL'"
+$ WRITE OUTFILE "$ ENDIF"
+$ WRITE OUTFILE "$ IF F$SEARCH(""''D3RESULT_LOG'"") .EQS. """" "
+$ WRITE OUTFILE "$ THEN"
+$ WRITE OUTFILE "$   COPY UU:UCT_3D_LIST_HEADER.TXT ''D3RESULT_LOG'"
+$ WRITE OUTFILE "$ ENDIF"
+$!
+$ WRITE OUTFILE "$ UCT_LIST"
+$ WRITE OUTFILE "UU:UCT_3D_LIST_NOHEAD.TXT"
+$ WRITE OUTFILE "''D3RESULT'"
+$ WRITE OUTFILE "0" ! DEFAULT UNIT
+$ WRITE OUTFILE "''EVAL_MEASNO'"
+$ WRITE OUTFILE "''EVAL_MEASNO'"
+$!
+$ WRITE OUTFILE "$ APPEND ''D3RESULT' ''D3RESULT_ALL'"
+$ WRITE OUTFILE "$ APPEND ''D3RESULT' ''D3RESULT_LOG'"
+$!
+$ WRITE OUTFILE "$ DELETE ''D3RESULT';"
+$ WRITE OUTFILE "$ EXIT"
+$!
+$!------------------------------------------------------------------------------
+$       CLOSE OUTFILE
+$!------------------------------------------------------------------------------
+$!      SET NOVERIFY
+$       @'COMMANDFILE'
+$       DELETE/NOLOG/NOCONFIRM 'COMMANDFILE';
+$!------------------------------------------------------------------------------
+
+
