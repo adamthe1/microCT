@@ -45,15 +45,73 @@
 
 /set_symbol test 13
 
+
 /db_e3_write_064
-  -type                      e43
+  -type                      e44
   -index                     "ipl_measno
   -mgroup                    "ipl_mgroup
   -egroup                    "ipl_egroup
   -region                    "ipl_region
   -version                   "ipl_version
   -logidx                    "ipl_logidx
-  -val000                    "test
+  -val000                    "seg_elsize_x_mm
+  -val001                    "seg_elsize_y_mm
+  -val002                    "seg_elsize_z_mm
+  -val003                    "seg_dim_x
+  -val004                    "seg_dim_y
+  -val005                    "seg_dim_z
+  -val006                    "seg_pos_x
+  -val007                    "seg_pos_y
+  -val008                    "seg_pos_z
+  -val009                    "seg_sigma
+  -val010                    "seg_support
+  -val011                    "seg_unit_code
+  -val012                    "seg_lower_th
+  -val013                    "seg_native_lower_th
+  -val014                    "seg_upper_th
+  -val015                    "seg_native_upper_th
+  -val016                    "seg_vox_tot_volume      ! do on full
+  -val017                    "seg_vox_obj_volume      !full
+  -val018                    "seg_vox_ov_tv           !full
+  -val019                    "mean2_vox_mu_mean       ! mean2 on ring with mask
+  -val020                    "mean2_vox_mu_sd
+  -val021                    "mean2_vox_mu_flag
+  -val022                    "mean1_vox_mu_mean       ! mean1 on full without mask
+  -val023                    "mean1_vox_mu_sd
+  -val024                    "mean1_vox_mu_flag
+  -val025                    "ttar
+  -val026                    "ctar
+  -val027                    "ct_area_frac
+  -val028                    "maar
+  -val029                    "seg_moi_cmx
+  -val030                    "seg_moi_cmy
+  -val031                    "seg_moi_ixx
+  -val032                    "seg_moi_iyy
+  -val033                    "seg_moi_ixy
+  -val034                    "seg_moi_pmoi
+  -val035                    "seg_moi_ixx_cy
+  -val036                    "seg_moi_iyy_cx
+  -val037                    "seg_moi_imax
+  -val038                    "seg_moi_imin
+  -val039                    "seg_moi_angle
+  -val040                    "seg_moi_imax_cmax
+  -val041                    "seg_moi_imin_cmin
+  -val042                    "cort_th_mean
+  -val043                    "cort_th_sd
+  -val044                    "cort_th_flag
+  -val045                    "outer_gobj_circum_mean
+  -val046                    "inner_gobj_circum_mean
+  -val047                    "po_cl_components
+  -val048                    "po_vox_obj_volume
+  -val049                    "po_cl_vol_sd
+  -val050                    "avgpov
+  -val051                    "po_dens
+  -val052                    "po_th_mean
+  -val053                    "po_th_sd
+  -val054                    "po_th_flag
+  -val055                    "ctpo
+  -val056                    "cort_angle_deg
+  -val057                    "cort_angle_deg_flag
 ..
 
 
