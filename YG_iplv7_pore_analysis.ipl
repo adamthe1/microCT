@@ -1,0 +1,751 @@
+!
+!         _/_/_/  _/_/_/    _/
+!          _/    _/    _/  _/           Image Processing Language
+!         _/    _/_/_/    _/
+!        _/    _/        _/             (c) SCANCO Medical AG
+!     _/_/_/  _/        _/_/_/_/
+
+
+!!!!!!!!!!!!!!!!!!!!!!!
+!! Pore analysis V1.0 !
+!!!!!!!!!!!!!!!!!!!!!!!
+
+! created: 27-OCT-2021 SW
+
+! note:
+
+! modifications:
+
+
+!  Pore analysis script
+
+! Input:
+! Segmentation parameters
+! Gobj peel optional
+! misc1_0: Treat top and bottom as open pores optional
+! misc1_1: Last rank of object to keep
+! misc1_2: Minimum number of voxels for an object component
+! misc1_3: Minimum number of voxels for a pore component
+
+
+!
+! AIM
+!
+
+/db_scanco_activate
+  -write                     true
+  -type                      2
+
+/db_e3_clear_eval
+  -type                      e47
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+
+
+
+/isq_to_aim
+  -aim_name                  org
+  -isq_filename              "ipl_isq
+  -pos                       "ipl_voix "ipl_voiy "ipl_voiz
+  -dim                       "ipl_voidx "ipl_voidy "ipl_voidz
+
+/write org "ipl_aim
+
+!
+!Segmentation
+!
+
+/sup org
+  -supdim_numbers            4 4 1
+  -testoff_pixels            "ipl_support0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/seg_gauss
+  -input                     org
+  -output                    seg
+  -sigma                     "ipl_sigma0
+  -support                   "ipl_support0
+  -lower_in_perm_aut_al      "ipl_lower0
+  -upper_in_perm_aut_al      "ipl_upper0
+  -value_in_range            127
+  -unit                      "ipl_unit0
+
+/copy seg seg_gobj
+/gobj_maskaimpeel_ow
+  -input_output              seg_gobj
+  -gobj_filename             "ipl_gobj0
+  -peel_iter                 "ipl_peel0
+
+!check if cl_rank of object
+/if "ipl_misc1_1 gt -1
+
+  /cl_ow_rank_extract
+    -input_output              seg
+    -first_rank                1
+    -last_rank                 "ipl_misc1_1
+    -connect_boundary          false
+    -value_in_range            127
+    -topology                  6
+
+/endif
+
+!check if min number of voxel in obj
+/if "ipl_misc1_2 gt 1
+
+  /cl_nr_extract
+    -input                     seg
+    -output                    cl
+    -min_number                "ipl_misc1_2
+    -max_number                0
+    -value_in_range            127
+    -topology                  6
+
+  /ren cl seg
+
+/endif
+
+
+!
+!Pores
+!
+
+/copy seg_gobj pores
+
+/invert_ow
+  -in_out                    pores
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+
+!check if minimal pore size
+/if "ipl_misc1_3 gt 1
+
+  /cl_nr_extract
+    -input                     pores
+    -output                    cl_pores
+    -min_number                "ipl_misc1_3
+    -max_number                0
+    -value_in_range            127
+    -topology                  6
+
+  /subtract pores cl_pores additional_object
+
+  /add seg additional_object seg_final
+
+  /del additional_object
+
+  /ren seg_final seg
+
+  /ren cl_pores pores
+
+/end if
+
+
+/write pores "ipl_fname2
+
+!/del pores ! Need it to create mask for DTO
+
+/write seg "ipl_segaim
+
+! seg/vox symbols
+/set_symbol_prefix seg_
+
+/exa seg geo
+
+/vox_scanco_param seg
+
+/del seg
+
+!
+! apparent density
+!
+
+/set_symbol_prefix org_
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_gobj0
+  -peel_iter                 "ipl_peel0
+  -region_number             0
+
+!
+! tissue (matrix) density of segmented volume
+!
+
+/set_symbol_prefix org2_
+
+/voxgobj_scanco_param
+  -input                     org
+  -gobj_filename             "ipl_segaim
+  -peel_iter                 2
+  -region_number             1
+
+/del org
+
+!
+! Thickness of object/structure with pores for accuracy of Mean2
+!
+
+/set_symbol_prefix dto_
+
+/read seg "ipl_segaim
+
+/dt_object_param
+  -input                     seg
+  -output                    dto
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -version2                  true
+  -histofile_or_screen       "ipl_fname0
+
+/write dto "ipl_fname1
+
+/del dto
+
+!
+!check mean accuracy for e3
+!
+
+/calculate1d "seg_vox_elsize_x_mm * 6 double ref_value
+
+/if "dto_th_mean lt "ref_value
+
+  /set_symbol org2_vox_mu_flag 3
+
+/endif
+
+!
+! Thickness of object/structure independently of the pores (will overwrite the results)
+!
+
+/set_symbol_prefix dto_
+
+/read seg "ipl_segaim
+! To remove pores before DTO:
+/concate pores seg filled_seg
+  -common_region_only        false
+  -add_not_overlay           true
+/set filled_seg 127 0
+
+/dt_object_param
+  -input                     filled_seg
+  -output                    dto
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -version2                  true
+  -histofile_or_screen       "ipl_fname0
+
+/write dto "ipl_fname1
+
+/del dto
+
+!
+! tri values for the porous object !!!
+!
+
+/sup seg
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+/set_symbol_prefix
+  -symbol_prefix             tri_
+
+/tri seg tri
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+
+!
+! Connectivity object
+!
+
+! keep largest component
+/ren seg rank1_seg
+
+/cl_ow_rank_extract rank1_seg 1 1
+
+/set_symbol_prefix rank1_seg_
+
+/vox_scanco_param rank1_seg
+
+/set_symbol_prefix con_
+
+/conn_bgcl rank1_seg
+
+!approximate flag for connectivity if less than 100% initial bone volume
+!is taken for connectvity calculation
+
+/calculate1d "rank1_seg_vox_obj_volume / "seg_vox_obj_volume double con_conn_ratio
+
+/if "con_conn_ratio lt 1.0
+  /set_symbol con_conn_flag 3
+/else
+  /set_symbol con_conn_flag 1
+/endif
+
+/del rank1_seg
+
+
+!
+! Pores
+!
+
+/set_symbol_prefix pores_
+
+/read pores "ipl_fname2
+
+/vox_scanco_param pores
+
+/cl_image
+  -input                     pores
+  -output                    cl
+  -histofile_or_screentab    "ipl_fname3
+  -topology                  6
+  -type_out                  short
+
+/cl_analyze
+  -input                     pores
+  -cl_image                  cl
+  -output                    "ipl_fname10
+
+/del cl
+
+/sup pores
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+
+/tri_da_metric_db
+  -input                     pores
+  -output                    tri
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+/dt_object_param
+  -input                     pores
+  -output                    poredt
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -version2                  true
+  -histofile_or_screen       "ipl_fname4
+
+
+/write poredt "ipl_fname5
+
+/del poredt
+
+!
+! Connectivity pores
+!
+
+/ren pores rank1_pores
+
+/set_symbol_prefix rank1_pores_
+
+! keep largest component
+/cl_ow_rank_extract rank1_pores 1 1
+
+/vox_scanco_param rank1_pores
+
+!conn_bgcl overwrites pores_cl_components. use different prefix for conn_bgcl
+/set_symbol_prefix pores2_
+
+/conn_bgcl rank1_pores
+
+/set_symbol_prefix rank1_pores_
+
+!approximate flag for connectivity if less than 90% initial bone volume
+!is taken for connectvity calculation
+
+/calculate1d "rank1_pores_vox_obj_volume / "pores_vox_obj_volume double pores_conn_ratio
+
+/if "pores_conn_ratio lt 1.0
+  /set_symbol pores_conn_flag 3
+/else
+  /set_symbol pores_conn_flag 1
+/endif
+
+/del rank1_pores
+
+!
+! Open pores
+!
+
+
+/read seg "ipl_segaim
+
+! if ipl_misc1_0 eqs yes the open pores also accessible from top/bottom
+
+/if "ipl_misc1_0 eqs yes
+
+  /fill_holes
+    -input                     seg
+    -output                    open_pores
+    -border                    1 1 1
+    -topology                  6
+
+/else
+
+  /fill_holes
+    -input                     seg
+    -output                    open_pores
+    -border                    1 1 0
+    -topology                  6
+
+
+/endif
+
+/del seg
+
+/invert_ow
+  -in_out                    open_pores
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+
+
+/write open_pores "ipl_fname6
+
+/set_symbol_prefix open_
+
+/vox_scanco_param open_pores
+
+
+/cl_image
+  -input                     open_pores
+  -output                    cl1
+  -histofile_or_screentab    "ipl_fname7
+  -topology                  6
+  -type_out                  short
+
+/cl_analyze
+  -input                     open_pores
+  -cl_image                  cl1
+  -output                    "ipl_fname11
+
+/del cl1
+
+/sup open_pores
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+
+/tri_da_metric_db
+  -input                     open_pores
+  -output                    tri
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+/dt_object_param
+  -input                     open_pores
+  -output                    opendt
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -version2                  true
+  -histofile_or_screen       "ipl_fname13
+
+! check what pore diam is
+/write opendt "ipl_fname14
+
+/del opendt
+
+
+!
+!closed_Pores
+!
+
+/read
+  -name                      pores
+  -filename                  "ipl_fname2
+
+/subtract_aims
+  -input1                    pores
+  -input2                    open_pores
+  -output                    closed_pores
+
+/del open_pores
+
+/del pores
+
+/write closed_pores "ipl_fname8
+
+/set_symbol_prefix closed_
+
+/vox_scanco_param closed_pores
+
+
+/cl_image
+  -input                     closed_pores
+  -output                    cl2
+  -histofile_or_screentab    "ipl_fname9
+  -topology                  6
+  -type_out                  short
+
+/cl_analyze
+  -input                     closed_pores
+  -cl_image                  cl2
+  -output                    "ipl_Fname12
+
+/del cl2
+
+/sup closed_pores
+  -supdim_numbers            4 4 1
+  -testoff_pixels            0 0 0
+  -suppos_pixels_local       -1 -1 -1
+  -subdim_pixels             -1 -1 -1
+
+
+/tri_da_metric_db
+  -input                     closed_pores
+  -output                    tri2
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -ip_sigma                  0.000000
+  -ip_support                0
+  -ip_threshold              50
+  -nr_ave_iter               2
+  -t_dir_radius              2
+  -epsilon                   1.200000
+  -size_image                512 512
+  -scale_image               0.700000
+  -edges                     false
+  -nr_views                  0
+
+/dt_object_param
+  -input                     closed_pores
+  -output                    closeddt
+  -gobj_filename             gobj_from_log
+  -peel_iter                 -1
+  -roi_radius_factor         10000.000000
+  -ridge_epsilon             0.900000
+  -assign_epsilon            1.800000
+  -version2                  true
+  -histofile_or_screen       "ipl_fname15
+
+/write closeddt "ipl_fname16
+
+/del closed_pores
+
+/del closeddt
+
+
+! create 3d image for result sheet
+/read
+  -name                      obj
+  -filename                  "ipl_segaim
+
+/read
+  -name                      open
+  -filename                  "ipl_fname6
+
+/read
+  -name                      close
+  -filename                  "ipl_fname16
+
+/set_value
+  -input                     obj
+  -value_object              -1.000000
+  -value_background          0.000000
+
+/set_value
+  -input                     open
+  -value_object              -2.000000
+  -value_background          0.000000
+
+/concat
+  -input1                    obj
+  -input2                    open
+  -output                    outt
+  -common_region_only        false
+  -add_not_overlay           false
+  -make_edge                 false
+  -shift_ofin2               0 0 0
+  -turnangle                 0.000000
+  -turnpoint_global          -1 -1
+
+/concat
+  -input1                    outt
+  -input2                    close
+  -output                    out
+  -common_region_only        false
+  -add_not_overlay           false
+  -make_edge                 false
+  -shift_ofin2               0 0 0
+  -turnangle                 0.000000
+  -turnpoint_global          -1 -1
+
+/write out "ipl_fname17
+
+
+!
+! Calculate values for db
+!
+
+/calculate1d "seg_vox_obj_volume / "seg_vox_tot_volume double seg_vox_ov_tv
+/calculate1d "seg_vox_ov_tv * 100 double seg_vox_ov_tv
+
+/calculate1d "tri_tri_obj_volume  / "tri_tri_tot_volume double tri_tri_ov_tv
+/calculate1d "tri_tri_ov_tv * 100 double tri_tri_ov_tv
+
+/calculate1d "tri_tri_obj_surface / "tri_tri_tot_volume double tri_tri_bs_tv
+/calculate1d "tri_tri_obj_surface / "tri_tri_obj_volume double tri_tri_bs_bv
+
+/calculate1d "pores_vox_ov_tv * 100 double pores_porosity
+/calculate1d "pores_tri_obj_surface / "pores_vox_obj_volume double pores_surf_vol_fraction
+
+/calculate1d "open_tri_obj_surface / "open_vox_obj_volume double open_surf_vol_fraction
+/calculate1d "open_vox_ov_tv * 100 double open_porosity
+
+/calculate1d "closed_tri_obj_surface / "closed_vox_obj_volume double closed_surf_vol_fraction
+/calculate1d "closed_vox_ov_tv * 100 double closed_porosity
+
+
+
+
+/db_e3_write_128
+  -type                      e47
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "seg_elsize_x_mm
+  -val001                    "seg_elsize_y_mm
+  -val002                    "seg_elsize_z_mm
+  -val003                    "seg_dim_x
+  -val004                    "seg_dim_y
+  -val005                    "seg_dim_z
+  -val006                    "seg_pos_x
+  -val007                    "seg_pos_y
+  -val008                    "seg_pos_z
+  -val009                    "seg_sigma
+  -val010                    "seg_support
+  -val011                    "seg_unit_code
+  -val012                    "seg_lower_th
+  -val013                    "seg_native_lower_th
+  -val014                    "seg_upper_th
+  -val015                    "seg_native_upper_th
+  -val016                    "seg_vox_tot_volume
+  -val017                    "seg_vox_obj_volume
+  -val018                    "seg_vox_ov_tv
+  -val019                    "org2_vox_mu_mean
+  -val020                    "org2_vox_mu_sd
+  -val021                    "org2_vox_mu_flag
+  -val022                    "org_vox_mu_mean
+  -val023                    "org_vox_mu_sd
+  -val024                    "org_vox_mu_flag
+  -val025                    "dto_th_mean
+  -val026                    "dto_th_sd
+  -val027                    "dto_th_flag
+  -val028                    "tri_tri_tot_volume
+  -val029                    "tri_tri_obj_volume
+  -val030                    "tri_tri_ov_tv
+  -val031                    "tri_tri_obj_surface
+  -val032                    "tri_tri_bs_tv
+  -val033                    "tri_tri_bs_bv
+  -val034                    "tri_tri_smi
+  -val035                    "tri_tri_da
+  -val036                    "tri_tri_h1_abs
+  -val037                    "tri_tri_h2_abs
+  -val038                    "tri_tri_h3_abs
+  -val039                    "tri_tri_h1_x
+  -val040                    "tri_tri_h1_y
+  -val041                    "tri_tri_h1_z
+  -val042                    "tri_tri_h2_x
+  -val043                    "tri_tri_h2_y
+  -val044                    "tri_tri_h2_z
+  -val045                    "tri_tri_h3_x
+  -val046                    "tri_tri_h3_y
+  -val047                    "tri_tri_h3_z
+  -val048                    "tri_tri_flag
+  -val049                    "con_conn_density
+  -val050                    "con_conn_flag
+  -val051                    "con_conn_ratio
+
+  -val052                    "pores_vox_obj_volume
+  -val053                    "pores_porosity
+  -val054                    "pores_th_mean
+  -val055                    "pores_th_sd
+  -val056                    "pores_th_flag
+  -val057                    "pores_tri_obj_surface
+  -val058                    "pores_surf_vol_fraction
+  -val059                    "pores_tri_flag
+  -val060                    "pores_cl_components
+  -val061                    "pores2_conn_density
+  -val062                    "pores_conn_flag
+  -val063                    "pores_conn_ratio
+
+  -val064                    "open_vox_obj_volume
+  -val065                    "open_porosity
+  -val066                    "open_th_mean
+  -val067                    "open_th_sd
+  -val068                    "open_th_flag
+  -val069                    "open_tri_obj_surface
+  -val070                    "open_surf_vol_fraction
+  -val071                    "open_tri_flag
+  -val072                    "open_cl_components
+
+  -val073                    "closed_vox_obj_volume
+  -val074                    "closed_porosity
+  -val075                    "closed_th_mean
+  -val076                    "closed_th_sd
+  -val077                    "closed_th_flag
+  -val078                    "closed_tri_obj_surface
+  -val079                    "closed_surf_vol_fraction
+  -val080                    "closed_tri_flag
+  -val081                    "closed_cl_components
+
+
+..
+
