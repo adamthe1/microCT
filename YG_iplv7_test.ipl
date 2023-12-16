@@ -45,9 +45,9 @@
 
 /set_symbol test 13
 
-
+..
 /db_e3_write_064
-  -type                      e44
+  -type                      e43
   -index                     "ipl_measno
   -mgroup                    "ipl_mgroup
   -egroup                    "ipl_egroup
