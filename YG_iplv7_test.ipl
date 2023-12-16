@@ -28,6 +28,34 @@
 ! Porosity
 ! 
 
+
+
+/db_scanco_activate
+  -write                     true
+  -type                      2
+
+/db_e3_clear_eval
+  -type                      e44
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+
+/set_symbol test 13
+
+/db_e3_write_064
+  -type                      e44
+  -index                     "ipl_measno
+  -mgroup                    "ipl_mgroup
+  -egroup                    "ipl_egroup
+  -region                    "ipl_region
+  -version                   "ipl_version
+  -logidx                    "ipl_logidx
+  -val000                    "test
+..
+
+
 /read ring_pores "ipl_segaim
 /gobj ring_pores "ipl_fname1
 ! Otherwise the BM will be considered as porosity...
