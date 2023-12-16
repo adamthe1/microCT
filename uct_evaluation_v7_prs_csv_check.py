@@ -5,6 +5,24 @@ import credentials
 import network
 import profiles
 
+import msvcrt
+
+file_path = 'example.txt'
+
+# take all the data from the data file and enter it to the dest file 
+# the dest file will be summary and log (project results) of the results
+# uses a lock mechanism to allow multiple proccesses
+def write_to_file(data_file, dest_file):
+    with open(dest_file, 'a') as file:
+        # Acquire an exclusive lock
+        msvcrt.locking(file.fileno(), msvcrt.LK_LOCK)
+
+        try:
+            # Perform write operations
+            file.write(data)
+        finally:
+            # Release the lock
+            msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK)
 
 def does_file_exist_in_hierarchy(virtualpath: str, connection) -> bool:
     try:
@@ -103,10 +121,9 @@ with open(commandfile, "at") as commandfile_fp:
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result}     -m={mgroup} -e={egroup} -r=2 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     print(f'"{uct_list_exe_filename}" -t={template} -a={d3result}     -m={mgroup} -e={egroup} -r=3 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
     
-    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_all} -m={mgroup} -e={egroup} -r=1 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
-    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_all} -m={mgroup} -e={egroup} -r=2 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
-    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_all} -m={mgroup} -e={egroup} -r=3 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
-    
-    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_log} -m={mgroup} -e={egroup} -r=1 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
-    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_log} -m={mgroup} -e={egroup} -r=2 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
-    print(f'"{uct_list_exe_filename}" -t={template} -a={d3result_log} -m={mgroup} -e={egroup} -r=3 -v={version} -e3x={e3x} -u=0 {measno}', file=commandfile_fp)
+    # take all the data from the data file and enter it to the dest file 
+    with open(d3result, 'r') as thedata:
+        # data starts from second occurence of '\n' so strip everything before
+        data = thedata[data.find('\n', data.find('\n')+1)+1:]
+    write_to_file(data, d3result_all)
+    write_to_file(data, d3result_log)

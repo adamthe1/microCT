@@ -74,6 +74,8 @@
   -value_in_range            127
   -unit                      "ipl_unit0
 
+! add mask on seg
+
 /copy seg seg_gobj
 /gobj_maskaimpeel_ow
   -input_output              seg_gobj

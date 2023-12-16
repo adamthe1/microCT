@@ -169,7 +169,7 @@
   /dil   cl seg_holes  1
   !!! from here make a total mask and use it to clean the TiP
   /dil seg_holes dil   15 
-  /inv   dil
+  /inv   dil1
   /cl_nr dil cl 
     -min_number                10000
     -max_number                0

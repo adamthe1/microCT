@@ -31,7 +31,7 @@ $	MASK1_GOBJ   :=  'DEV''DIR''SIDE1_NAME'_MASK.GOBJ
 $!
 $	TEMP_FILE    :=  'DEV''DIR''FILENAME'_TEMP.AIM 
 $!		
-$	pit_depth    = 3
+$	pit_depth    = 3~/Documents/coding/microCT/mainscripts/VMS
 $	ipl_peel0    = pit_depth * 2 
 $	ipl_peel1    = ipl_peel0
 $       sh sym ipl_peel1
